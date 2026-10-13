@@ -7,6 +7,7 @@ The mean-improvement/per-case-regression gate is the declared GDPevo adaptation.
 """
 
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import json
 import math
@@ -138,6 +139,7 @@ def assess(
     variance_cap=0.1,
     min_gain=0.0,
     max_case_drop=0.1,
+    case_ids=None,
 ):
     baseline, before_sessions = matrix_results(before)
     candidate, after_sessions = matrix_results(after)
@@ -155,10 +157,17 @@ def assess(
         raise ValueError("baseline and candidate cannot reuse the same trial/session")
     if before["benchmark_id"] == "penguinharness-benchmark-gdpevo-test":
         raise ValueError("held-out Test results cannot drive optimization")
-    if before["benchmark_id"] == "penguinharness-benchmark-gdpevo-train" and any(
-        "-test-" in case for case in baseline
-    ):
+    if any(re.fullmatch(r"CASE-\d+-tg\d+-test-\d+", case) for case in baseline):
         raise ValueError("Test cases cannot enter the training gate")
+    if case_ids is not None:
+        if not isinstance(case_ids, list) or not case_ids:
+            raise ValueError("gate case_ids must be a nonempty list")
+        for case in case_ids:
+            nonempty(case, "gate case_id")
+        if len(set(case_ids)) != len(case_ids) or not set(case_ids) <= baseline.keys():
+            raise ValueError("gate cases must be unique members of the reporting set")
+        baseline = {case: baseline[case] for case in sorted(case_ids)}
+        candidate = {case: candidate[case] for case in sorted(case_ids)}
     previous_variance = finite(previous_variance, "previous_variance")
     beta2 = finite(beta2, "beta2", maximum=1)
     variance_cap = finite(variance_cap, "variance_cap")
@@ -207,6 +216,75 @@ def assess(
         "previous_variance": previous_variance,
         "next_variance": variance,
         "next_budget": budget,
+    }
+
+
+def report(matrix, spec, time, step, summary):
+    """Format existing worker scores as one standard scoreboard evaluation.
+
+    The frozen spec prevents a partial or changing batch from becoming a curve point.
+    No files are written and no task output or grading material is read.
+    """
+    matrix_results(matrix)
+    for key in ("benchmark_id", "agent_id", "runtime", "runs"):
+        if matrix[key] != spec.get(key):
+            raise ValueError(f"reporting specification mismatch: {key}")
+    cases = spec.get("case_ids")
+    if not isinstance(cases, list) or not cases:
+        raise ValueError("reporting case_ids must be a nonempty list")
+    for case in cases:
+        nonempty(case, "reporting case_id")
+    if len(set(cases)) != len(cases) or set(cases) != set(matrix["case_ids"]):
+        raise ValueError("matrix does not cover the frozen reporting set")
+    label = nonempty(spec.get("label"), "reporting label")
+    nonempty(step, "step")
+    nonempty(summary, "summary")
+    timestamp = datetime.fromisoformat(nonempty(time, "time").replace("Z", "+00:00"))
+    if (
+        timestamp.tzinfo is None
+        or timestamp.utcoffset() != timezone.utc.utcoffset(timestamp)
+    ):
+        raise ValueError("measurement time must include the UTC timezone")
+
+    def known_mean(values):
+        known = [value for value in values if value is not None]
+        return round(statistics.mean(known), 6) if known else None
+
+    cells = {(cell["case_id"], cell["run"]): cell for cell in matrix["cells"]}
+    records = []
+    for case in cases:
+        runs = [
+            {
+                key: cells[case, run][key]
+                for key in ("score", "cost", "duration_ms", "session_id")
+            }
+            for run in range(1, matrix["runs"] + 1)
+        ]
+        records.append(
+            {
+                "case": case,
+                "score": statistics.mean(run["score"] for run in runs),
+                "cost": known_mean(run["cost"] for run in runs),
+                "duration_ms": round(
+                    statistics.mean(run["duration_ms"] for run in runs)
+                ),
+                "runs": runs,
+            }
+        )
+    return {
+        "time": timestamp.isoformat().replace("+00:00", "Z"),
+        "agent_id": matrix["agent_id"],
+        "version": matrix["version"],
+        **{
+            key: matrix["runtime"][key]
+            for key in ("provider", "model_id", "thinking_level")
+        },
+        "summary_title": f"{label}: {step}",
+        "summary": summary,
+        "score": round(statistics.mean(case["score"] for case in records), 2),
+        "cost": known_mean(case["cost"] for case in records),
+        "duration_ms": round(statistics.mean(case["duration_ms"] for case in records)),
+        "cases": records,
     }
 
 
@@ -322,6 +400,10 @@ def main():
     )
     gate.add_argument("--before", required=True)
     gate.add_argument("--after", required=True)
+    gate.add_argument(
+        "--case-ids", nargs="+",
+        help="frozen gate batch within the complete reporting matrices",
+    )
     gate.add_argument("--previous-variance", required=True, type=float)
     for name, default, kind in [
         ("beta2", 0.9, float),
@@ -332,16 +414,25 @@ def main():
         ("max-case-drop", 0.1, float),
     ]:
         gate.add_argument("--" + name, default=default, type=kind)
+    publication = commands.add_parser(
+        "report", help="validate and format scored cells for the existing scoreboard"
+    )
+    for name in ("matrix", "spec", "time", "step", "summary"):
+        publication.add_argument("--" + name, required=True)
     args = vars(parser.parse_args())
     command = args.pop("command")
     try:
         if command == "prepare":
             args["proposal"] = read_object(args["proposal"])
             result = prepare(**args)
-        else:
+        elif command == "assess":
             args["before"] = read_object(args["before"])
             args["after"] = read_object(args["after"])
             result = assess(**args)
+        else:
+            args["matrix"] = read_object(args["matrix"])
+            args["spec"] = read_object(args["spec"])
+            result = report(**args)
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
         return 0
     except (ValueError, OSError, OverflowError) as error:

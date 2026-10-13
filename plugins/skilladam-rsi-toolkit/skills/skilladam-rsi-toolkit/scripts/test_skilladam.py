@@ -8,6 +8,10 @@ Given invalid parameters or nonfinite scores, assessment fails rather than spend
 Given a valid patch, preparation writes only a separate candidate and preserves the source.
 Given bad context, extra files, excess hunks or changed metadata, no candidate is published.
 Given an empty patch or an occupied output, preparation does not overwrite any artifact.
+Given a reporting matrix and a frozen batch, only that batch drives the gate.
+Given an incomplete reporting matrix, a smaller gate batch cannot hide the failure.
+Given scored repeats on a fixed panel, reporting preserves trials and aggregates their scores.
+Given changed coverage/runtime or a failed cell, reporting emits no scoreboard record.
 """
 
 import copy
@@ -20,7 +24,7 @@ import sys
 import tempfile
 import unittest
 
-from skilladam import apply_patch, assess, prepare
+from skilladam import apply_patch, assess, prepare, report
 
 
 SOURCE = "---\nname: skilladam-working-skill\nversion: 2026.10.13.1\n---\n\nCheck the task.\nUse evidence.\nVerify the answer.\n"
@@ -72,6 +76,23 @@ def diff(before, after, context=3):
 
 
 class GateTests(unittest.TestCase):
+    def test_only_the_frozen_batch_drives_the_gate(self):
+        before, after = matrix([[20], [100]], 1), matrix([[40], [0]], 2)
+        selected = before["case_ids"][:1]
+        result = assess(before, after, case_ids=selected)
+        self.assertTrue(result["accepted"])
+        self.assertEqual(list(result["per_case_deltas"]), selected)
+        self.assertFalse(assess(before, after)["accepted"])
+        for batch in ([], [selected[0], selected[0]], ["missing"], [None]):
+            with self.subTest(batch=batch), self.assertRaises(ValueError):
+                assess(before, after, case_ids=batch)
+
+    def test_selecting_a_batch_cannot_hide_an_incomplete_reporting_matrix(self):
+        before, after = matrix([[20], [100]], 1), matrix([[40], [0]], 2)
+        after["cells"].pop()
+        with self.assertRaises(ValueError):
+            assess(before, after, case_ids=before["case_ids"][:1])
+
     def test_percentage_repeats_are_paired_by_case_not_cell_order(self):
         before = matrix([[0, 100], [20, 40]], 1)
         after = matrix([[50, 100], [40, 60]], 2)
@@ -140,6 +161,12 @@ class GateTests(unittest.TestCase):
             value["benchmark_id"] = "penguinharness-benchmark-gdpevo-test"
         with self.assertRaises(ValueError):
             assess(before, after)
+        for value in (before, after):
+            value["benchmark_id"] = "renamed-test-copy"
+            value["case_ids"] = ["CASE-001-tg003-test-001"]
+            value["cells"][0]["case_id"] = value["case_ids"][0]
+        with self.assertRaises(ValueError):
+            assess(before, after)
 
     def test_nonfinite_scores_and_invalid_parameters_fail(self):
         before, after = matrix([[10]], 1), matrix([[20]], 2)
@@ -159,6 +186,91 @@ class GateTests(unittest.TestCase):
         ]:
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
                 assess(before, after, **kwargs)
+
+
+class ReportingTests(unittest.TestCase):
+    def setUp(self):
+        self.matrix = matrix([[0, 100], [20, 40]], 2)
+        self.spec = {
+            key: self.matrix[key]
+            for key in ("benchmark_id", "agent_id", "runtime", "case_ids", "runs")
+        }
+        self.spec["label"] = "SkillAdam smoke 2/30 Train fixture"
+
+    def record(self, matrix=None, spec=None, time="2026-10-13T07:00:00Z"):
+        return report(
+            self.matrix if matrix is None else matrix,
+            self.spec if spec is None else spec,
+            time,
+            "candidate v2",
+            "Fixed panel; this is not a full Benchmark score.",
+        )
+
+    def test_fixed_panel_keeps_zero_scores_trials_and_unknown_costs(self):
+        self.matrix["cells"][0]["cost"] = 0
+        self.matrix["cells"][1]["cost"] = 0.002
+        self.matrix["cells"].reverse()
+        result = self.record()
+        self.assertEqual(result["score"], 40)
+        self.assertEqual(result["cost"], 0.001)
+        self.assertEqual(result["cases"][0]["runs"][0]["score"], 0)
+        self.assertIsNone(result["cases"][1]["cost"])
+        self.assertEqual(
+            result["cases"][1]["runs"][1]["session_id"],
+            "harbor:v2-CASE-002-tg003-train-002-2",
+        )
+        self.assertTrue(result["summary_title"].startswith(self.spec["label"]))
+        self.assertEqual(result["version"], 2)
+
+    def test_unpriced_evaluation_remains_unpriced(self):
+        self.assertIsNone(self.record()["cost"])
+
+    def test_changed_panel_runtime_and_failed_cells_produce_no_record(self):
+        for key, value in (
+            ("case_ids", self.spec["case_ids"][:1]),
+            ("case_ids", self.spec["case_ids"] * 2),
+            ("case_ids", None),
+            ("case_ids", [None]),
+            ("runs", 2 + 1),
+            ("benchmark_id", "another-benchmark"),
+            ("agent_id", "another-target"),
+            ("runtime", {"provider": "other"}),
+            ("label", ""),
+        ):
+            spec = {**self.spec, key: value}
+            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                self.record(spec=spec)
+        broken = copy.deepcopy(self.matrix)
+        broken["cells"][0]["status"] = "failed"
+        with self.assertRaises(ValueError):
+            self.record(matrix=broken)
+        for timestamp in (
+            "2026-10-13T07:00:00", "2026-10-13T07:00:00+01:00", "invalid"
+        ):
+            with self.subTest(time=timestamp), self.assertRaises(ValueError):
+                self.record(time=timestamp)
+
+    def test_cli_formats_a_complete_panel_and_rejects_a_partial_one(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            inputs, spec = root / "matrix.json", root / "spec.json"
+            inputs.write_text(json.dumps(self.matrix))
+            spec.write_text(json.dumps(self.spec))
+            command = [
+                sys.executable,
+                str(Path(__file__).with_name("skilladam.py")),
+                "report", "--matrix", str(inputs), "--spec", str(spec),
+                "--time", "2026-10-13T07:00:00Z", "--step", "candidate v2",
+                "--summary", "Fixed panel",
+            ]
+            valid = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(valid.returncode, 0, valid.stderr)
+            self.assertEqual(json.loads(valid.stdout)["score"], 40)
+            self.matrix["cells"].pop()
+            inputs.write_text(json.dumps(self.matrix))
+            invalid = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(invalid.returncode, 2)
+            self.assertEqual(invalid.stdout, "")
 
 
 class PatchTests(unittest.TestCase):
