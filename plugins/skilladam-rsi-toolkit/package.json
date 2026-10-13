@@ -1,0 +1,38 @@
+{
+  "name": "@penguinharness/skilladam-rsi-toolkit",
+  "version": "0.2.15",
+  "description": "SkillAdam RSI Toolkit: evolve a target Skill through trajectory feedback, an evolving issue tracker, paired evaluation and a variance-controlled patch budget. Includes a GDPevo Train/Test workflow.",
+  "keywords": [
+    "penguin-plugin",
+    "penguinharness",
+    "skills"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Prism-Shadow/penguin-harness.git",
+    "directory": "plugins/skilladam-rsi-toolkit"
+  },
+  "files": [
+    "icon.svg",
+    "skills",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "penguin": {
+    "description_zh": "SkillAdam RSI 工具包：结合执行轨迹、持续更新的问题记录、配对评测和按方差调整的补丁预算，迭代优化目标 Agent 的技能。包含 GDPevo 训练与测试流程。",
+    "short_description": "SkillAdam RSI Toolkit: evolve a Skill from execution feedback.",
+    "short_description_zh": "SkillAdam RSI 工具包：根据执行反馈迭代技能。",
+    "category": "rsi",
+    "icon": "icon.svg",
+    "quick_start": {
+      "prompt": "Use the skilladam-rsi-toolkit Skill on GDPevo Train. Create the target gdpevo_skilladam, use the smoke profile (six training cases, two iterations), and report the paired scores, accepted changes and cost. Use a source-built Penguin install bundle. Keep GDPevo Test out of this smoke run.",
+      "prompt_zh": "使用 skilladam-rsi-toolkit 技能在 GDPevo Train 上优化新建的 gdpevo_skilladam Agent：先运行六道训练题、两轮迭代的试跑配置，报告配对分数、接受的修改与成本。使用源码构建的 Penguin 安装包，本次试跑不使用 GDPevo Test。",
+      "skills": [
+        "skilladam-rsi-toolkit"
+      ]
+    }
+  }
+}

@@ -884,6 +884,8 @@ importers:
 
   plugins/skill-porting: {}
 
+  plugins/skilladam-rsi-toolkit: {}
+
   plugins/software-development: {}
 
   plugins/use-bento-slides: {}
