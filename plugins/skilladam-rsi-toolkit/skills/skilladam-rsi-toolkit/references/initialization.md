@@ -1,6 +1,17 @@
 # Target state and recovery
 
-Use the paths from SKILL.md. Resolve user identifiers beneath the current Project; reject traversal and symlink escape. The optimizer's OUT is outside the Target, so its issue tracker, scores and candidate history never become Target instructions.
+Resolve `PROJECT_DIR` from the Environment's App Data Dir, `TARGET = PROJECT_DIR/agents/<test_agent_id>` and `STATE = TARGET/agent_state`. The learned document is `STATE/skills/skilladam-working-skill/SKILL.md`. Store optimizer records in the controller's scratchpad:
+
+```text
+OUT = PROJECT_DIR/agents/<controller_id>/scratchpad/<session_id>/skilladam-rsi-toolkit/<UTC timestamp>-<target_id>/
+  experiment.json        # frozen parameters, cases, runtime and source identities
+  state.json             # accepted snapshot, completed iteration, variance and next budget
+  stage0/                # Hraw observations, initialization prompt and generated S0
+  iterations/<number>/   # batch, measurements, feedback, proposal, decision and EIT
+  reports/               # comparable Train/Test results and final report
+```
+
+The optimizer's OUT is outside the Target, so its issue tracker, scores and candidate history never become Target instructions. Resolve identifiers within the current Project. Record the installed controller Skill version/hash, helper hash, Target state hashes, benchmark statement hashes, case/group lists, source bundle hash and source commit. Keep the full tracker history; prompts may use a condensed copy with stable issue ids and evidence references.
 
 ## Prepare the Target
 

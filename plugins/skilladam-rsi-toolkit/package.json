@@ -28,8 +28,8 @@
     "category": "rsi",
     "icon": "icon.svg",
     "quick_start": {
-      "prompt": "Use the skilladam-rsi-toolkit Skill on GDPevo Train. Create the target gdpevo_skilladam, use the smoke profile (six training cases, two iterations), and report the paired scores, accepted changes and cost. Use a source-built Penguin install bundle. Keep GDPevo Test out of this smoke run.",
-      "prompt_zh": "使用 skilladam-rsi-toolkit 技能在 GDPevo Train 上优化新建的 gdpevo_skilladam Agent：先运行六道训练题、两轮迭代的试跑配置，报告配对分数、接受的修改与成本。使用源码构建的 Penguin 安装包，本次试跑不使用 GDPevo Test。",
+      "prompt": "Use the skilladam-rsi-toolkit Skill to optimize a new target gdpevo_skilladam on GDPevo Train. Resolve the training cases, iteration count and execution budget before starting. Use a source-built Penguin install bundle. Report the Skill changes, paired scores and cost. If held-out evaluation is included, run GDPevo Test after optimization is frozen.",
+      "prompt_zh": "使用 skilladam-rsi-toolkit 技能在 GDPevo Train 上优化新建的 gdpevo_skilladam Agent。开始前明确训练题集、迭代轮数和执行预算，使用源码构建的 Penguin 安装包。报告技能修改、配对分数与成本；如果实验包含留出评测，在优化结束并冻结技能后运行 GDPevo Test。",
       "skills": [
         "skilladam-rsi-toolkit"
       ]

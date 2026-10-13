@@ -1,104 +1,113 @@
 ---
 name: skilladam-rsi-toolkit
-description: "Optimize an agent's working Skill with SkillAdam (Stable and Efficient Skill Evolution for Agents, 2026): use execution feedback, an evolving issue tracker and a variance-controlled patch budget. Includes GDPevo training and held-out evaluation."
-version: 2026.10.13.2
+description: "Optimize an agent's working Skill with SkillAdam (Stable and Efficient Skill Evolution for Agents, 2026): learn from execution feedback, maintain an evolving issue tracker and adapt the edit budget to reward variance. Includes GDPevo training and held-out evaluation."
+version: 2026.10.13.3
 ---
 
 # SkillAdam
 
-Implement the skill-evolution loop from [SkillAdam: Stable and Efficient Skill Evolution for Agents](https://arxiv.org/abs/2609.08944), v1, with reference code at [ruc-datalab/SkillAdam](https://github.com/ruc-datalab/SkillAdam), revision `b6c9640f7a9e0d5e3a500c25bc4e6369eeca78f1` (`skilladam/core/edit_budget.py`, `acceptance_gate.py`, `momentum.py`, `feedback_loop.py`). Model weights, tools and runtime stay fixed. Optimize one Target-owned Skill document. This controller Skill never rewrites itself.
+Evolve a task-solving agent's Markdown Skill using [SkillAdam: Stable and Efficient Skill Evolution for Agents](https://arxiv.org/abs/2609.08944), v1. The reference implementation is [ruc-datalab/SkillAdam](https://github.com/ruc-datalab/SkillAdam/tree/b6c9640f7a9e0d5e3a500c25bc4e6369eeca78f1). Keep the model and tools fixed: improve the procedures the agent reads before solving a task.
 
-The evolving issue tracker (EIT) preserves problems, evidence and attempted corrections across iterations. A moving average of the variance of per-case reward changes controls the next patch's hunk budget. This is a functional analogy to Adam; do not add numerical gradients, a first-moment coefficient or bias correction. GDPevo is an adaptation; the paper does not report results on it.
+This Skill runs the optimizer. The **Target** is the separate agent that solves benchmark tasks using the evolving working Skill. Only that working Skill is optimized; this controller document stays fixed. GDPevo is the benchmark adaptation provided here; it was not evaluated in the paper.
+
+## The method
+
+SkillAdam starts by observing an agent's executions and generating an initial Skill, S0. It then repeatedly runs the current Skill on a training batch, proposes a small edit from the execution feedback, and evaluates the edited Skill on the same batch. A benchmark-specific acceptance gate decides whether to keep the edit or return to the previous Skill.
+
+Two mechanisms carry information between iterations:
+
+- **Evolving Issue Tracker (EIT).** Maintain a record of problems, supporting evidence and attempted fixes. For example, if an agent repeatedly misreads a required output format, record the failure, the correction tried and whether it helped. Later proposals use this history to build on useful corrections and avoid repeating failed approaches. This plays the role of first-moment memory in the paper's analogy to Adam.
+- **Adaptive edit budget.** Compare the candidate's reward with the current Skill's reward on each case. If the changes vary widely across cases, reduce the next edit's allowed size; if they become consistent, the budget can recover. SkillAdam uses a moving average of this variance to set a limit on diff hunks. A hunk is one edit region in a unified diff. The acceptance gate separately checks whether the candidate actually improves performance: consistently harmful changes can also have low variance.
+
+These are operations on text and execution feedback. There are no model-weight gradients or Adam bias-correction steps. Feedback includes the agent's trajectory and evaluation metrics; a benchmark may also provide diagnostic text. The method does not require a reference answer in every feedback packet. The GDPevo adapter here supplies training task context, Target traces and scalar scores.
 
 ## Before you start
 
-This controller needs `run_subagent`. If unavailable, report that a top-level Session must run the Skill. Resolve the Target and authorized execution budget before starting model calls. Ask only for required inputs the request and Environment do not supply:
+Resolve the following from the request and the current Environment. Ask only for missing inputs needed to run the experiment.
 
-- `test_agent_id`: an existing Agent or `create: <id>`, distinct from the controller. The quick start creates `gdpevo_skilladam`; an existing directory requires another id or a verified resume.
-- `benchmark_id`: the training Benchmark selected in the Evaluation Center, default `penguinharness-benchmark-gdpevo-train` only when omitted. Accept `train_benchmark_id` as an alias; if both are supplied they must agree. Record and dispatch the resolved value as `benchmark_id`. Never replace a supplied Benchmark with the default. Reject a Test split as optimization input.
-- `case_ids`: the fixed reporting/training pool. Honor an explicit subset after validating membership and sampling coverage. Otherwise smoke selects six training cases, one per environment; full uses every training case. Freeze the list before any scores exist.
-- `test_benchmark_id`: default `penguinharness-benchmark-gdpevo-test`, used only in the full profile, after optimization ends.
-- `provider` and `model_id`: the explicit pair, else this Session's Environment pair. Fix the Target's `thinking_level` as described in `references/evaluation.md`. Record the proposer and tracker model too; do not silently switch models.
-- `profile`: `smoke` by default, or `full` when requested. Smoke uses two iterations and one run per case unless supplied. Both profiles measure each published candidate on the same fixed `case_ids`; full uses a sampled subset of those measurements for its optimization gate and measures S0 and the final Skill on held-out Test after evolution. An explicit subset remains a subset even in full mode.
-- `install_bundle`: a local, source-built Penguin bundle for Harbor; see `references/gdpevo.md`. Resolve this prerequisite before any paid evaluation.
+| Input | How to resolve it |
+| --- | --- |
+| Target | An existing `test_agent_id` or `create: <id>`, distinct from the controller. The quick start uses `gdpevo_skilladam`. |
+| Training Benchmark | Use the selected `benchmark_id`; default to `penguinharness-benchmark-gdpevo-train` when omitted. `train_benchmark_id` is an alias. |
+| Training cases | Use an explicit `case_ids` subset when supplied; otherwise use all cases in the training Benchmark. Freeze this reporting set before measuring. |
+| Runtime | Use the requested provider/model, or the current Environment's pair. Keep the Target's model, thinking level and tools fixed, and record the proposer and tracker models. |
+| Experiment budget | Resolve the iteration count, batch size, repeats and execution ceiling before model calls. Use the GDPevo parameter defaults in `references/gdpevo.md` unless overridden. |
+| Held-out evaluation | If included in the experiment, resolve `test_benchmark_id` and its cases now; evaluate them after optimization. The built-in split is `penguinharness-benchmark-gdpevo-test`. |
 
-Freeze these parameters in `OUT/experiment.json` before Stage 0:
+For GDPevo, read `references/gdpevo.md` to prepare the source-built Penguin bundle, freeze the cases and parameters, and calculate the execution budget. Read `references/initialization.md` to prepare the Target, snapshots and experiment records. These references contain the Penguin setup details; the optimization steps below describe the method.
 
-| Parameter | Default | Meaning |
-| --- | --- | --- |
-| `iterations` | 2 | Maximum proposal iterations, including invalid or empty proposals |
-| `batch_size` | 6 | One training case per GDPevo environment |
-| `runs` | 1 | Repeats of each case; fixed across both sides of a comparison |
-| `seed` | 42 | Reproducible sampling, independent of outcomes |
-| `base_budget`, `min_budget` | 4, 1 | Maximum and minimum diff hunk counts |
-| `beta2`, `variance_cap` | 0.9, 0.1 | Variance EMA and budget saturation point |
-| `min_gain` | 0.0 | Strict improvement in mean reward on the `0..1` scale |
-| `max_case_drop` | 0.1 | Largest allowed drop in any paired case mean, on `0..1` |
-| Harbor concurrency | 4 | Respect a lower user limit; never exceed 8 |
+## Initialize
 
-The sampling, profiles and gate above are explicit GDPevo choices, not published GDPevo hyperparameters. User-specified values replace them before measurement, never in response to Test results. A custom batch size must be a positive multiple of the six environment groups, within the available cases. A non-GDPevo Benchmark needs an explicit sampling map and score adapter; do not infer them from private answers.
+1. Save the prepared Target without a generated working Skill as **Hraw**. Run it on the Stage 0 training batch and collect task context, execution traces and scores.
+2. Make a fresh proposer call with those observations. Ask it to write a concise Markdown Skill containing reusable task-solving procedures drawn from the successes and failures. Save the prompt and reply; use the generated body as **S0**.
+3. Install S0 as the Target's working Skill using `references/initialization.md`. Start an empty EIT, set the running variance to zero, and set the first edit budget to `base_budget`.
+4. Measure S0 on the frozen training reporting set. Keep Hraw and S0 separate in the results so that initialization gains are distinguishable from later optimization gains.
 
-Read `references/initialization.md` for Target preparation, snapshots and recovery. Read `references/gdpevo.md` for the benchmark split, source bundle, feedback and reporting. Like OPRO and APE, this Skill dispatches workers using its own byte-identical `references/evaluation.md` and appends complete fixed-case matrices through that protocol; it does not require the `agent-evaluation` plugin. The native Harbor verifier remains the scorer.
+In Penguin, use `run_subagent` without `agent_id` for a fresh proposer or tracker call. Pass the required text in its prompt and request no tools or file access. The controller supplies observations and applies the returned edits; the Target receives the working Skill when it runs a task.
 
-## State and budget
+## Measure
 
-Resolve `PROJECT_DIR` from the Environment's App Data Dir, `TARGET = PROJECT_DIR/agents/<test_agent_id>` and `STATE = TARGET/agent_state`. The learned document is `STATE/skills/skilladam-working-skill/SKILL.md`. Put all optimizer data outside the Target:
+Use `references/evaluation.md`, the same worker protocol and scoreboard format shipped with APE and OPRO. Dispatch the requested Target version, model, case and run index; collect a complete case-by-repeat matrix. The existing Harbor verifier supplies the scores. This Skill does not introduce another grader.
+
+For each comparison, evaluate the current Skill and candidate with the same cases, repeats and runtime. The GDPevo adapter measures the entire frozen reporting set for a comparable learning curve, with the iteration's training batch chosen in advance. Only that batch's results drive the proposal, gate and EIT update. Full reporting-set measurements are an integration choice that costs more than evaluating the batch alone.
+
+Reuse a prior measurement when its state, runtime, cases and repeats match; retain its trial references. Infrastructure failures leave a measurement incomplete and must be resolved before comparison. A completed task with a genuine zero reward remains a scored result. See `references/gdpevo.md` for collecting trace feedback and publishing results to the Evaluation Center.
+
+## Optimize
+
+Repeat the following for the configured number of proposal iterations. Start each iteration from the last accepted Skill, its EIT and the current edit budget.
+
+### 1. Observe the current Skill
+
+Select the training batch using the frozen sampling rule. Measure or reuse the current Skill's results and collect the batch's task context, trajectories and scores. Save the ordered case ids so the candidate is compared on exactly these cases.
+
+### 2. Propose an edit
+
+Give a fresh proposer the current working Skill, the batch feedback, the EIT and the allowed hunk count. A suitable prompt is:
 
 ```text
-OUT = PROJECT_DIR/agents/<controller_id>/scratchpad/<session_id>/skilladam-rsi-toolkit/<UTC timestamp>-<target_id>/
-  experiment.json        # immutable inputs, runtime, split, hashes, source revisions, adaptations
-  state.json             # last completed iteration, accepted snapshot, variance, next budget
-  stage0/                # raw baseline, seed prompt and generated S0
-  iterations/<number>/   # batch, baseline/candidate cells, feedback, prompts, patch, decision, EIT
-  reports/               # fixed-panel or full Train/Test measurements and final report
+Improve the working Skill using the training observations below.
+Use the issue tracker to account for previous attempts. Explain which
+observed problem your change addresses and how it should help across tasks.
+Write reusable procedures rather than answers to the training cases.
+
+Return one JSON object with string fields "reasoning" and "patch".
+The patch must be a unified diff from a/SKILL.md to b/SKILL.md, edit only
+the Markdown body, and contain at most <next_budget> hunks.
+An empty patch is allowed when you have no supported change to propose.
+
+Current Skill: <complete working Skill>
+Training feedback: <batch tasks, traces and scores>
+Issue tracker: <current EIT>
 ```
 
-Record the installed controller Skill's version/hash, helper hash, target state hashes, benchmark statement hashes, case/group lists, source bundle hash and source commit. Save every proposal, tracker update and failure. Keep the complete records; the prompt may use a condensed tracker with stable issue ids and evidence references.
+Save the reply and validate it with `scripts/skilladam.py prepare`; the command is documented in `references/gdpevo.md`. An invalid or unchanged proposal consumes one proposal iteration without changing the Skill, EIT or variance. Otherwise install the prepared candidate and snapshot its new version.
 
-State the maximum number of Target executions before running: `R * (I + (2*T + 2)*C_train + 2*C_test)`, where I is the Stage 0 panel size, T the iteration count and C the frozen reporting sets. Smoke has I=C_train=6, C_test=0: at most 42 executions with defaults. Full with 30 Train and 30 Test has at most 246. Full-case candidate reporting is a declared evaluation-cost adaptation; only the sampled batch drives its gate. This excludes proposer/tracker calls and setup; report their costs separately. Reuse a complete measurement only when the State version/hash, case set, runs, runtime and source bundle all match; keep the original trial references and do not append it again. Skipped proposals also reduce the total. Respect any user ceiling; do not silently broaden smoke into full evaluation or run OPRO/APE comparisons.
+### 3. Evaluate and decide
 
-## Stage 0: initialize from execution
+Evaluate the candidate and pair its scores with the current Skill's scores. The paper allows each benchmark to define improvement thresholds and protected metrics. For GDPevo, `scripts/skilladam.py assess` averages repeats per case and converts percentage scores to rewards in `0..1`. Its gate accepts an edit only when:
 
-1. Snapshot the unmodified Target as Hraw. Evaluate the fixed Stage 0 training panel with the frozen runtime and collect its public task context, Target trajectories and scalar rewards. No generated working Skill is installed yet. If this panel equals the reporting set, publish its complete matrix; otherwise keep it as a seed diagnostic in OUT, clearly distinct from a reporting evaluation.
-2. Make one fresh proposer call (no `agent_id`, no tools or file access) with those observations: ask for a concise Markdown skill body of reusable task-solving procedures, grounded in repeated successes and failures. Exclude task-specific answers, private grading logic and test information. Save the exact prompt and reply. A missing or unusable reply stops initialization; do not substitute a seed invented by the controller.
-3. Wrap the body in the fixed working-Skill frontmatter from `references/initialization.md`, install the fixed reader, allocate a new State version and snapshot S0. Initialize an empty EIT, `variance = 0` and `next_budget = base_budget`. Measure S0 on the fixed reporting Train set. Hraw and S0 are separate baselines; Stage 0 gains are not iterative gains.
+- the batch's mean reward gain is strictly greater than `min_gain` (default `0`); and
+- no case's reward drops by more than `max_case_drop` (default `0.1`).
 
-## Iterate
+Keep an accepted candidate. Restore the previous accepted Skill when the gate rejects it. Save both measured versions and the decision, including rejected candidates.
 
-For each iteration, start from the last accepted snapshot and its committed EIT/variance. Nothing else writes the Target while a matrix is running.
+### 4. Update the tracker and next edit budget
 
-1. **Baseline.** Select the training batch deterministically using `references/gdpevo.md`. Save its exact ordered case ids. Measure or reuse the current Skill's complete reporting `case_ids` × runs matrix, publish a new complete measurement, and save `before.json`. Bind feedback only for the sampled batch. Incomplete or mismatched measurements have no score; stop and retain the last accepted state.
-2. **Propose.** In a fresh tool-free proposer call, provide the exact current working Skill, current training tasks/trajectory feedback, the previous EIT and `next_budget`. Ask for a JSON object with exactly `reasoning` and `patch` strings. The patch is a unified diff of `a/SKILL.md` to `b/SKILL.md`, at most the allowed hunks, editing only the body. An empty patch is permitted. Ask for reusable corrections and evidence links; prohibit inserting answers or optimizer records. Do not show previous candidates outside the recorded tracker, private rubrics or Test data. Save the raw reply; do not repair its patch yourself.
-3. **Validate.** Parse the reply as one JSON object, then run `scripts/skilladam.py prepare` as documented below. Invalid JSON, an invalid patch, changed frontmatter or an exceeded budget spends this iteration but changes neither the Skill nor EIT, variance or next budget. An empty/no-change patch is a recorded no-op with the same behavior, a declared evaluation-cost adaptation.
-4. **Candidate.** Publish the prepared document, advance its date version and allocate a new State version. Snapshot before measuring. Evaluate it on exactly the same reporting cases and run indices as the baseline, with the same runtime and source bundle. Save `after.json` and publish the complete matrix, including a candidate later rejected by the gate. Record the candidate's hashes after version metadata is advanced. A launch failure is not a zero reward and cannot enter the gate.
-5. **Gate and budget.** Run the helper's `assess` command with `--case-ids` naming the frozen iteration batch. It validates both full reporting matrices, then uses only that batch: averages repeats within each case, divides percentage scores by 100, calculates per-case candidate-minus-baseline deltas and their sample variance, then updates `V = beta2*V + (1-beta2)*variance(deltas)`. Next budget is `max(min_budget, round(base_budget*(1-clip(V/variance_cap, 0, 1))))`. Accept only if mean reward gain is strictly greater than `min_gain` and every case drop is within `max_case_drop`. A tie is rejected. Save the complete decision. Do not use the remaining reporting cases to change the gate, proposal, tracker or next batch.
-6. **Tracker.** Make a fresh tool-free tracker call with the prior EIT, the two measured versions' training feedback, proposed approach and actual gate decision. Preserve stable issue ids; record evidence, status (`open`, `resolved`, `reopened`) and attempts (`iteration`, `approach`, `gate_accepted`, outcome references). Retain rejected attempts. Resolve a problem only with evidence on the accepted state; a rejected candidate's success does not resolve the live Target's problem. Validate the structured update and save it before committing the iteration.
-7. **Commit.** If accepted, retain the candidate snapshot; otherwise restore the previous accepted snapshot exactly. In either case, commit the new tracker and computed variance/budget for the next iteration. Update `state.json` atomically with the completed iteration and evidence hashes. Invalid proposals and incomplete measurements never perform this step. If the tracker update fails, retain the pending decision and stop; resume that step rather than rerunning paid evaluations.
+Ask a fresh tracker call to update the EIT using the prior tracker, the attempted edit, paired batch feedback and gate decision. Preserve issue ids and attempted fixes. Record whether each problem remains open, is resolved on the retained Skill, or has returned. A rejected attempt still teaches the tracker what was tried.
 
-The final Skill is the last accepted state. Scores from different minibatches cannot rank candidates; do not pick a global winner by minibatch score. Do not import another optimizer's selection or early-stopping rule.
+For each case, let `delta` be candidate reward minus current reward. The helper computes:
 
-## Deterministic helper
-
-Python 3 standard library only. Resolve `SKILL_DIR` to the installed directory containing this `SKILL.md`; all output paths below are new files under OUT. The helper does not edit the Target, its snapshots, the tracker or the scoreboard.
-
-```bash
-python3 "$SKILL_DIR/scripts/skilladam.py" prepare \
-  --skill "$STATE/skills/skilladam-working-skill/SKILL.md" \
-  --proposal "$ITER/proposal.json" --budget "$NEXT_BUDGET" \
-  --output "$ITER/prepared.md"
-
-python3 "$SKILL_DIR/scripts/skilladam.py" assess \
-  --before "$ITER/before.json" --after "$ITER/after.json" \
-  --case-ids <the frozen batch's full CASE-directory names> \
-  --previous-variance "$PREVIOUS_VARIANCE" --beta2 0.9 \
-  --base-budget 4 --min-budget 1 --variance-cap 0.1 \
-  --min-gain 0 --max-case-drop 0.1
+```text
+V = beta2 * previous_V + (1 - beta2) * sample_variance(deltas)
+scale = 1 - clip(V / variance_cap, 0, 1)
+next_budget = max(min_budget, round(base_budget * scale))
 ```
 
-Replace numeric flags with the frozen experiment parameters. Save stdout as the result only on exit 0; exit 2 means invalid input, never a scored rejection. `prepare` reports `ready` or `noop`; a no-op creates no output. `assess` emits both the acceptance decision and the next budget, including for valid rejected candidates. `report` validates a matrix against the frozen reporting specification and formats the existing worker scores for the scoreboard; it never grades answers or writes the scoreboard. Matrix and reporting schemas are in `references/gdpevo.md`.
+Sample variance uses `n - 1` in the denominator, or zero for one case. Both accepted and rejected evaluated candidates update `V`, the next budget and the EIT. Save them with the retained Skill as the starting point for the next iteration. The checkpoint and tracker format are in `references/initialization.md`.
 
 ## Freeze and report
 
-Measure the final accepted state on the same reporting Train set as S0. In full mode only, with evolution finished, measure S0 and the final state on the frozen Test set, then finish with the final accepted snapshot restored. Neither Test scores nor Test traces go to the proposer or EIT; Test results never select a winner.
+The final Skill is the **last accepted Skill**. Measure it on the same training reporting set as S0. If held-out evaluation was included in the experiment, freeze optimization first, then evaluate S0 and the final Skill on the same Test cases. Test feedback does not enter proposals or tracker updates, and does not select the final Skill.
 
-Report Hraw's panel score, S0 and final fixed-set scores, accepted/rejected/invalid/no-op iterations, per-case changes, variance/budget history, exact versions/hashes, trial references, total known costs and unknown cost components. Publish complete frozen reporting matrices, including smoke, to the Evaluation Center using `references/evaluation.md`. Give all records the same experiment/coverage label; partial matrices and sampled gate diagnostics remain in OUT. State the adaptations and coverage, and say when there is no improvement. Do not claim a reproduced paper result or a full GDPevo result from a six-case smoke run.
+Report the initial Hraw batch result, S0 and final comparable scores, accepted and rejected changes, invalid or unchanged proposals, and the variance/edit-budget history. Include case coverage, versions, trial references and known costs, with missing cost information identified. Publish complete reporting matrices through the shared evaluation protocol. Describe the GDPevo sampling, gate and reporting adaptations so readers can distinguish this experiment from the paper's benchmarks.
