@@ -128,6 +128,9 @@ importers:
       '@penguinharness/default-rsi-toolkit':
         specifier: workspace:*
         version: link:../../plugins/default-rsi-toolkit
+      '@penguinharness/evo-harness-rsi-toolkit':
+        specifier: workspace:*
+        version: link:../../plugins/evo-harness-rsi-toolkit
       '@penguinharness/goal':
         specifier: workspace:*
         version: link:../../plugins/goal
@@ -137,6 +140,9 @@ importers:
       '@penguinharness/model-development':
         specifier: workspace:*
         version: link:../../plugins/model-development
+      '@penguinharness/openskill-rsi-toolkit':
+        specifier: workspace:*
+        version: link:../../plugins/openskill-rsi-toolkit
       '@penguinharness/opro-rsi-toolkit':
         specifier: workspace:*
         version: link:../../plugins/opro-rsi-toolkit
@@ -243,6 +249,9 @@ importers:
       '@penguinharness/default-rsi-toolkit':
         specifier: workspace:*
         version: link:../../plugins/default-rsi-toolkit
+      '@penguinharness/evo-harness-rsi-toolkit':
+        specifier: workspace:*
+        version: link:../../plugins/evo-harness-rsi-toolkit
       '@penguinharness/goal':
         specifier: workspace:*
         version: link:../../plugins/goal
@@ -252,6 +261,9 @@ importers:
       '@penguinharness/model-development':
         specifier: workspace:*
         version: link:../../plugins/model-development
+      '@penguinharness/openskill-rsi-toolkit':
+        specifier: workspace:*
+        version: link:../../plugins/openskill-rsi-toolkit
       '@penguinharness/opro-rsi-toolkit':
         specifier: workspace:*
         version: link:../../plugins/opro-rsi-toolkit
@@ -361,6 +373,9 @@ importers:
       '@penguinharness/default-rsi-toolkit':
         specifier: workspace:*
         version: link:../../plugins/default-rsi-toolkit
+      '@penguinharness/evo-harness-rsi-toolkit':
+        specifier: workspace:*
+        version: link:../../plugins/evo-harness-rsi-toolkit
       '@penguinharness/goal':
         specifier: workspace:*
         version: link:../../plugins/goal
@@ -370,6 +385,9 @@ importers:
       '@penguinharness/model-development':
         specifier: workspace:*
         version: link:../../plugins/model-development
+      '@penguinharness/openskill-rsi-toolkit':
+        specifier: workspace:*
+        version: link:../../plugins/openskill-rsi-toolkit
       '@penguinharness/opro-rsi-toolkit':
         specifier: workspace:*
         version: link:../../plugins/opro-rsi-toolkit
@@ -907,6 +925,8 @@ importers:
 
   plugins/default-rsi-toolkit: {}
 
+  plugins/evo-harness-rsi-toolkit: {}
+
   plugins/goal: {}
 
   plugins/humanizer:
@@ -926,6 +946,8 @@ importers:
       vitest:
         specifier: ^4.1.12
         version: 4.1.12(@types/node@24.13.3)(@vitest/coverage-v8@4.1.12)(jsdom@30.1.2(@noble/hashes@1.8.0))(vite@7.3.7(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  plugins/openskill-rsi-toolkit: {}
 
   plugins/opro-rsi-toolkit: {}
 
@@ -2012,6 +2034,9 @@ packages:
 
   '@penguinharness/model-development@file:plugins/model-development':
     resolution: {directory: plugins/model-development, type: directory}
+
+  '@penguinharness/openskill-rsi-toolkit@file:plugins/openskill-rsi-toolkit':
+    resolution: {directory: plugins/openskill-rsi-toolkit, type: directory}
 
   '@penguinharness/opro-rsi-toolkit@file:plugins/opro-rsi-toolkit':
     resolution: {directory: plugins/opro-rsi-toolkit, type: directory}
@@ -6527,6 +6552,8 @@ snapshots:
 
   '@penguinharness/model-development@file:plugins/model-development': {}
 
+  '@penguinharness/openskill-rsi-toolkit@file:plugins/openskill-rsi-toolkit': {}
+
   '@penguinharness/opro-rsi-toolkit@file:plugins/opro-rsi-toolkit': {}
 
   '@penguinharness/penguin-support@file:plugins/penguin-support': {}
@@ -6613,6 +6640,7 @@ snapshots:
       '@penguinharness/goal': file:plugins/goal
       '@penguinharness/humanizer': file:plugins/humanizer
       '@penguinharness/model-development': file:plugins/model-development
+      '@penguinharness/openskill-rsi-toolkit': file:plugins/openskill-rsi-toolkit
       '@penguinharness/opro-rsi-toolkit': file:plugins/opro-rsi-toolkit
       '@penguinharness/penguin-support': file:plugins/penguin-support
       '@penguinharness/skill-porting': file:plugins/skill-porting
@@ -6656,6 +6684,7 @@ snapshots:
       '@penguinharness/goal': file:plugins/goal
       '@penguinharness/humanizer': file:plugins/humanizer
       '@penguinharness/model-development': file:plugins/model-development
+      '@penguinharness/openskill-rsi-toolkit': file:plugins/openskill-rsi-toolkit
       '@penguinharness/opro-rsi-toolkit': file:plugins/opro-rsi-toolkit
       '@penguinharness/penguin-support': file:plugins/penguin-support
       '@penguinharness/skill-porting': file:plugins/skill-porting
@@ -6699,6 +6728,7 @@ snapshots:
       '@penguinharness/goal': file:plugins/goal
       '@penguinharness/humanizer': file:plugins/humanizer
       '@penguinharness/model-development': file:plugins/model-development
+      '@penguinharness/openskill-rsi-toolkit': file:plugins/openskill-rsi-toolkit
       '@penguinharness/opro-rsi-toolkit': file:plugins/opro-rsi-toolkit
       '@penguinharness/penguin-support': file:plugins/penguin-support
       '@penguinharness/skill-porting': file:plugins/skill-porting
@@ -6738,6 +6768,7 @@ snapshots:
       '@penguinharness/goal': file:plugins/goal
       '@penguinharness/humanizer': file:plugins/humanizer
       '@penguinharness/model-development': file:plugins/model-development
+      '@penguinharness/openskill-rsi-toolkit': file:plugins/openskill-rsi-toolkit
       '@penguinharness/opro-rsi-toolkit': file:plugins/opro-rsi-toolkit
       '@penguinharness/penguin-support': file:plugins/penguin-support
       '@penguinharness/skill-porting': file:plugins/skill-porting
@@ -6777,6 +6808,7 @@ snapshots:
       '@penguinharness/goal': file:plugins/goal
       '@penguinharness/humanizer': file:plugins/humanizer
       '@penguinharness/model-development': file:plugins/model-development
+      '@penguinharness/openskill-rsi-toolkit': file:plugins/openskill-rsi-toolkit
       '@penguinharness/opro-rsi-toolkit': file:plugins/opro-rsi-toolkit
       '@penguinharness/penguin-support': file:plugins/penguin-support
       '@penguinharness/skill-porting': file:plugins/skill-porting
