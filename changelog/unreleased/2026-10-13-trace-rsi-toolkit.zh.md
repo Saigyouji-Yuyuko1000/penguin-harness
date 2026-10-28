@@ -2,13 +2,16 @@
 
 - **Date:** 2026-10-13
 - **Type:** feature
-- **Scope:** `skills`, `docs`, `landing`
+- **Scope:** `skills`, `docs`
+- **PR:** [Saigyouji-Yuyuko1000/penguin-harness#5](https://github.com/Saigyouji-Yuyuko1000/penguin-harness/pull/5)
 
 [English](2026-10-13-trace-rsi-toolkit.md)
 
 在 Agent 自进化插件与算法目录中新增了 `trace-rsi-toolkit`。
 
 ## 训练与测量
+
+汇报统一使用 `baseline`／`final`、测试重复次数、版本、得分及资源字段；各方法的学习记录与 Test 重复测量统计分别保留。
 
 入口 Skill 在容器外组织已发布的连续训练 Benchmark，训练参考文件作为容器内 Curator 的独立 Skill。每批默认每题由新的 Actor 会话尝试两次；Curator 初始化 B0 并演化两轮，全部完成后按 best_train 选版。所选技能库与无 Skill 基线各进行三次完整测试，报告重复实验均分的平均数与样本标准差、各阶段分数、选版依据和资源成本。任务路径与运行契约从当前发布的 Benchmark 解析。
 

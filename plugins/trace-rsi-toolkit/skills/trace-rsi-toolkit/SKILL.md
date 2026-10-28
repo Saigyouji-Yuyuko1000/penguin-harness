@@ -1,7 +1,7 @@
 ---
 name: trace-rsi-toolkit
 description: Organize TRACE experiments on published Benchmarks, train a modular skill bank from Actor trajectories, select a checkpoint by training scores, and compare it with a no-Skill baseline on independent tests.
-version: 2026.10.28.1
+version: 2026.10.28.2
 ---
 
 # TRACE
@@ -36,7 +36,7 @@ Resolve provider, model and thinking level for Organizer, Curator, Actor and tes
 3. **Monitor.** Save each launch configuration, State digest, job/trial path and process handle in `state.yaml`. Use the runtime's supported background mechanism with completion notifications, keep this organizing task active and inspect owned jobs at the configured interval. Wait in chunks the available tools support. A state file enables recovery; it does not wake an ended Agent. On resume, reconcile live processes and native results before launching missing work.
 4. **Collect and select.** Follow [evaluation.md](references/evaluation.md). Collect every prescribed batch, snapshot and publication record. Independently recompute `best_train` from complete training measurements and verify the exported bank digest. The final training verifier's exported-answer score is a separate measurement. Incomplete evidence does not justify selecting from a convenient subset.
 5. **Test.** Freeze the selected bank before any test starts. Construct the no-Skill and selected-bank States from the same base, then schedule a complete case × repetition matrix for each. Each cell uses a fresh environment and conversation. Testing and other units' training may overlap within the shared resource limits. Test feedback never changes the bank or checkpoint selection. Evaluate intermediate banks only when requested before testing.
-6. **Report.** Publish complete matrices to the native scoreboard and give the user baseline/selected means and sample SDs, their difference, actual stage scores and the selected stage, costs, tokens, elapsed time and failures. Use the statistical definitions in [evaluation.md](references/evaluation.md). Keep progress and final reports tied to the same experiment version.
+6. **Report.** Publish complete matrices to the native scoreboard. Use the [common report fields](references/evaluation.md#common-report-fields): `baseline` and `final` for the two frozen States, `run` for test repetitions, and `mean`, `std` and `final_minus_baseline` for the comparison. Retain actual training stages and the selected checkpoint, costs, token categories, elapsed time and failures. Keep progress and final reports tied to the same experiment version.
 
 Follow the benchmark's retry policy, preserving failed attempts and distinguishing infrastructure failures from scored outcomes. Default to at most one automatic retry when that policy permits it; never retry a completed answer because its score is low. Report unresolved blockers while allowing unrelated owned jobs to proceed.
 
