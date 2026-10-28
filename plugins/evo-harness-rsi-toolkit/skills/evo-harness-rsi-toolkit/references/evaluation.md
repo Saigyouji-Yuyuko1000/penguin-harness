@@ -1,130 +1,124 @@
-# Evaluate one cell
+# Run workers and collect measurements
 
-How this toolkit measures a Target Agent on a Benchmark without any other plugin: the toolkit's Skill is the controller, every Case × run cell is scored by a worker the controller spawns through `run_subagent`, and every complete evaluation lands in the Benchmark's `scoreboard.yaml` in the shape the Evaluation Center reads. The same file ships in every RSI toolkit; keep it byte-identical.
+The benchmark supplies the evaluator and defines its Train/Test splits. Use its measured scores and execution evidence throughout. The controller schedules one whole training run per benchmark or independent training unit, then three test repetitions of each frozen State by default. The Solver attempts, original-session reflections and one batch Evolver stay inside the training Target's Session and environment.
 
-## Paths
+## The launch worker
 
-Resolve every path from the Environment's `App Data Dir`; never search for the Project:
+Receive the experiment root, benchmark, training unit, phase, test repetition index when testing, published case ID if applicable, native task path, resolved checkout, State archive and identity, runtime, optional install bundle and unique output path from the controller. Resolve the selected benchmark's launch instructions through [initialization.md](initialization.md).
 
-```text
-PROJECT_DIR  = <app_data_dir>
-PROJECT_ID   = basename of PROJECT_DIR
-PENGUIN_HOME = dirname of PROJECT_DIR
-TARGET       = PROJECT_DIR/agents/<test_agent_id>
-STATE        = TARGET/agent_state
-BENCHMARK    = PROJECT_DIR/benchmarks/<benchmark_id>
-CASE         = BENCHMARK/<case_id>       # statement/README.md is public; rubric/README.md is private
-SCOREBOARD   = BENCHMARK/scoreboard.yaml
+A training worker runs one complete learning trial. A test worker runs one held-out question in one test repetition using the specified frozen State. Neither changes the experiment or launches another experiment controller.
+
+Wait for completion using the available managed background mechanism, then return the status and exact trial/artifact paths. A launched process or an idle Agent is not by itself a completed trial. Use the native result to distinguish completion, interruption and infrastructure failure.
+
+Follow the selected benchmark's retry rules. A diagnosed infrastructure failure before the Target starts can be repaired and retried under a new job name, retaining the failed attempt. A completed wrong answer or low score is a measurement. Interrupted learning that already used the model remains incomplete work; do not silently replace it with a fresh successful run.
+
+## Read native results
+
+For a scored Harbor trial, take reward from the trial's `verifier_result.rewards` using the benchmark's declared metric and scale. Convert a normalized `0..1` reward to `0..100` for reporting; preserve other metric scales as documented. Collect cost and token usage from `agent_result`, timestamps from the native execution records, and actual model usage/outcome for runtime identity. Missing grade data is incomplete; a measured zero is valid.
+
+For training, collect the final answer grades from the benchmark's documented result artifacts. Each continuous learning trial contributes its cost and duration once. Read the per-task scores, original Solver Session IDs, negative candidates, batch decisions and frozen library from the learning records. Use the same display scale as Test while retaining the raw values. Keep online measurements distinct from the final verifier grade.
+
+For Test, gather every requested case in each repetition for the pre-training base State and final learned State. All repetitions of a version use the same State archive and digest. Both versions use the same task set, base State, model, tools and scoring conditions; each trial begins with a fresh environment and conversation. Test feedback never revises a learned Skill. With N held-out cases and R repetitions, the two States need 2RN task trials (6N at the default of three repetitions). Training is performed once.
+
+Reconcile the experiment index with native trial results, matching each score to the case and frozen State actually evaluated. Keep failed or superseded attempts separately, with their costs and reasons. In progress reports, show completed coverage and compare versions only on their shared completed cases.
+
+## Record cost, time and tokens
+
+Keep these measurements together at the following granularity:
+
+| Record | Scope |
+| --- | --- |
+| Training | One record for the complete training run that produces one learned Skill, identified by benchmark/training unit and exported Skill/State version. Include the coordinator, all Solver/reflection calls and the one batch Evolver; do not count delegated usage twice. |
+| Test | One record for each benchmark, frozen State, test case and repetition. Keep its score, cost, time and token usage together. |
+
+Each record includes cost in USD, start and finish timestamps, elapsed duration and the token breakdown below. Keep the native trial/session and artifact paths so the measurements can be traced back.
+
+| Token metric | Penguin usage |
+| --- | --- |
+| Cached input | `cache_read` in token records, or `cacheRead` in cost summaries: input served from cache hits. |
+| Uncached input | `cache_write` or `cacheWrite`: input on a cache miss. |
+| Output | `output`: thinking and response tokens combined. |
+| Total input | Cached input + uncached input. |
+| Total tokens | Total input + output. |
+
+For Harbor, read `cost_usd`, `n_input_tokens`, `n_output_tokens` and `n_cache_tokens` from `agent_result` when supplied. These give cost, total input, output and cached input respectively. Derive uncached input as total input minus cached input only when both are available. Penguin's per-session usage artifact, such as `agent/penguin-cost-by-session.json`, retains the original `cacheRead`, `cacheWrite` and `output` breakdown. Cached input is already part of total input; thinking tokens are already part of output. Do not add either twice.
+
+Use the native trial's start and finish timestamps for elapsed wall-clock duration, with the same timing boundary for Train and Test. Preserve agent-only execution time separately when available.
+
+Sum costs and each token category into separate Train and Test totals, retaining the per-Skill and per-case records. Count each underlying request once: session/model breakdowns and parent/child summaries may describe the same usage. Keep controller and scheduling usage separate from the training and test trials, and include it once in the experiment total.
+
+Report summed training durations and summed test durations separately from actual experiment wall-clock time; concurrent trials overlap. Keep failed-attempt usage visible in the totals. Mark missing measurements as unknown (`null` in structured output), and label any partial totals rather than treating missing usage as zero.
+
+## Publish to the Evaluation Center
+
+When the experiment includes published Penguin Benchmarks, use the existing `scoreboard.yaml` format used by APE and OPRO. The numerical helper's `report` command validates a complete evaluation matrix and prints the standard evaluation record itself.
+
+A matrix identifies `benchmark_id`, `agent_id`, `version`, `state_sha256`, `runtime` (`provider`, `model_id`, `thinking_level`), `case_ids`, `runs` and `cells`. Each scored cell contains:
+
+```json
+{
+  "protocol_version": 1, "status": "ok",
+  "case_id": "<published case ID>", "run": 1,
+  "agent_id": "<Target ID>", "expected_version": 1,
+  "provider": "<provider>", "model_id": "<model ID>", "thinking_level": "<level>",
+  "score": 75.0, "cost": null, "duration_ms": 1000,
+  "session_id": "harbor:<unique trial name>"
+}
 ```
 
-Reject traversal, symlink escape, or any path outside TARGET and BENCHMARK. Never read `.project_config.toml`, `.vault.toml`, the server's `api-token` file or `web.db`, and never call the server's HTTP API with a token read from disk.
-
-## The controller
-
-1. Require `benchmark_config.toml` and read its `status`: a literal `draft` is not frozen and a literal `failed` one never calibrated (stop and say so); a missing or any other value is published. Read the Agent State `version` from `STATE/system_config.yaml` (1 when absent) and `model.thinking_level` (`medium` when absent).
-2. Fix the runtime once per experiment: `provider` and `model_id` are the pair the user named, else the `Provider` and `Model ID` lines of your own Environment. Never read a pair from the Target's files, a Project default or the server. A half pair stops the run.
-3. For every Case in the declared case set and every run index `1..runs`, call `run_subagent` once (omit `agent_id`: the worker is this Agent, so it can read this file) with exactly:
-
-```text
-Read <absolute path of this references/evaluation.md> and follow its "The worker" section. Evaluate one cell and reply with the protocol YAML only.
-protocol_version: 1
-case_id: <case_id>
-run: <1_based_run_index>
-expected_version: <agent_state_version>
-test_agent_id: <test_agent_id>
-benchmark_id: <benchmark_id>
-provider: <provider>
-model_id: <model_id>
-```
-
-Cases of one frozen State may run in parallel within capacity; two States of the same Target never run at the same time. A Case whose statement has a `## How this case is run` section naming the Harbor framework is a Harbor case, as every built-in Benchmark's are: run its cells in the background, at most four at a time unless the user named another limit (never above eight), launching the next cell the moment one returns rather than in batches and without polling, and retry once, at lower concurrency, a cell Docker could not give a network (its trial's `result.json` under `BENCHMARK/.jobs/` names an exhausted address pool; that is never a score).
-
-4. Before reading any field, check that the worker-authored text is exactly one plain YAML document. If not, ask the same worker to resend the YAML from its existing result; never rerun the Target for a formatting repair. Require every scored result's `agent_id`, `provider`, `model_id` and `thinking_level` to equal the fixed runtime, else the matrix is invalid: stop.
-5. `invalid_request`: correct and resend. `version_changed` or `benchmark_invalid`: stop. `evaluation_failed`: ask the same worker to diagnose and repair, and rerun only that cell when Workspace and Trace evidence proves the Target never started; every retry applies a new, specific repair. A matrix with a missing cell has no score: never average a partial matrix.
-6. Append one evaluation per complete matrix to `SCOREBOARD` (create the file with `evaluations: []` if the Benchmark has none), then re-parse the file and verify the appended record:
-
-```yaml
-- time: <ISO-8601 UTC, from `date -u +"%Y-%m-%dT%H:%M:%SZ"`>
-  agent_id: <test_agent_id>
-  version: <agent_state_version measured>
-  provider: <provider>
-  model_id: <model_id>
-  thinking_level: <thinking_level>
-  summary_title: >-
-    <public title: the method, the step or candidate, and the result>
-  summary: >-
-    <public summary; never the rubric, gold answers or private scoring>
-  score: <average of the Case scores, two decimals>
-  cost: <average of known Case costs (six decimals), or null when every Case cost is null>
-  duration_ms: <average of the Case durations, integer>
-  cases:
-    - case: <case_id>
-      score: <average of the Run scores>
-      cost: <average of known Run costs, or null>
-      duration_ms: <average of the Run durations>
-      runs:
-        - score: <Run score>
-          cost: <Run cost or null>
-          duration_ms: <Run duration>
-          session_id: <Test Session id>
-```
-
-Every score is on the fixed `0..100` scale; write no `max_score`, no `aggregate`, and no field the shape above does not have. The stored averages are authoritative. Record only complete measurements of a State that still exists as a snapshot; a method's own history (proposals, skipped candidates, partial matrices, failures) stays in the method's output directory, not in the scoreboard.
-
-## The worker
-
-You evaluate exactly one cell. Do not spawn another worker, do not write `SCOREBOARD`, do not change the Target or the Benchmark. Operate silently: across streamed and final responses, the only text you author is the final protocol YAML — no narration, headings, fences or scoring details.
-
-1. Validate the request: every field present once and consistent, else return `invalid_request`. Require `STATE/system_config.yaml`, `benchmark_config.toml`, `CASE/statement/README.md` and `CASE/rubric/README.md`; `status = "failed"` is `benchmark_invalid`. The State `version` (1 when absent) must equal `expected_version`, else `version_changed`. Snapshot `model.thinking_level` (`medium` when absent) and every file under `statement/` and `rubric/`. The Rubric's items must total exactly 100 points.
-2. **Workspace cases.** Create a unique Workspace under `TARGET/workspaces/`, resolve it to an absolute canonical path under that directory, and copy only `statement/` into it. The Target may see the statement and its own State, never the rubric. Run one foreground execution as separate shell statements in this order:
+Build the spec with the same benchmark, agent, runtime, case IDs and runs, plus a descriptive `label`. Use the actual measured State version, file digest and native trial identity. Then run:
 
 ```bash
-PROJECT_DIR="<app_data_dir>"
-PROJECT_ID="$(basename "$PROJECT_DIR")"
-PENGUIN_HOME="$(dirname "$PROJECT_DIR")"
-export PENGUIN_HOME
-penguin run \
-  --message "Read README.md in the current Workspace and complete the task exactly as specified there." \
-  --provider "<provider>" --model-id "<model_id>" --project-id "$PROJECT_ID" \
-  --agent-id "<test_agent_id>" --workspace "<absolute_unique_workspace_path>" \
-  --approve allow-all
+python3 "$TOOLKIT/scripts/evo.py" report \
+  --matrix "$MATRIX" --spec "$SPEC" --time "$UTC_TIME" \
+  --step "$STEP" --summary "$SUMMARY"
 ```
 
-   (Never pass `--source`: it is retired; every Session `penguin run` creates is a CLI Session and lands in the Web App's Background folder.) Use the exact requested Agent, Project, Workspace and model pair; never fall back to a Project default. Retry a launch only when unchanged Workspace and Trace evidence proves the Target did not start, each retry with a new diagnosis and a specific correction. Return `evaluation_failed` when no safe repair remains or it is unclear whether the Target started.
-3. **Harbor cases.** If the statement's `## How this case is run` section names the Harbor framework, links the benchmark repository at a 40-character commit and gives the `harbor run` launch, run that launch instead of step 2, from the root of a checkout at that commit, following the repository README section the statement links (fetching, concurrency, retries, `result.json`, credentials). The trial must run the Target, not a stock agent: derive `PROJECT_ID` and `PENGUIN_HOME` as in step 2, pick a job name not used before (`<case_id>-run<run>-<UTC timestamp>`), pack the State into `BENCHMARK/.jobs/<job>.agent-state.tar.gz` (create `.jobs/` when missing) with `tar --exclude=./.vault.toml --exclude=./memory --exclude=./schedule -czf <archive> -C "STATE" .`, and insert `--ak agent_state_tar=<archive> --ak host_penguin_home="$PENGUIN_HOME" --ak host_project_id="$PROJECT_ID"` and, when the checkout holds the install bundle the README describes, `--ak install_bundle=<that file>` before `--agent-setup-timeout-multiplier`, with `--job-name <job> -o "BENCHMARK/.jobs"`; remove the archive after the run. The verifier's reward × 100 is the score; `result.json`'s `agent_result.cost_usd` the cost; `agent_execution` start/finish the duration; `harbor:<trial directory name>` the session id. The one configuration value you look up is the model's API host, through the repository's helper, as that section says.
-4. After the run, verify that the State `version`, `model.thinking_level` and both material snapshots are unchanged (`version_changed` / `benchmark_invalid` otherwise). Bind exactly one root Trace whose Workspace, Agent State path, provider and model match this request (`evaluation_failed` if there is no unique match); read the actual `provider` / `model_id` from its `session_meta`. A Harbor case binds its trial instead: the actual pair is the key of `agent_result.model_usage`, and a trial the README says has no score is `evaluation_failed`.
-5. Score against the private Rubric from the Workspace, the bound root Trace and its directly referenced child Traces only. A wrong, missing or malformed answer is scored behavior (`status: ok`); a launcher, binding or scoring failure is not. `duration_ms` is the root Session's; `cost` only from usage or cost already recorded in those Traces, else `null`.
-6. Return the YAML as the only worker-authored text, without fences. Scored:
+Append the returned record under `evaluations` in that Benchmark's scoreboard and preserve existing records. Only complete matrices are published; incomplete work stays visible in the experiment index.
+
+A combined training task may be **one published Train case** containing several questions. Map it as the selected benchmark declares, measured using the initial learner State, with `runs: 1`. Its final grade is not an independent evaluation of a frozen candidate Skill. Keep the inner batch learning record in the experiment output rather than inventing separate Harbor trial identities for its questions.
+
+For Test, publish one matrix per benchmark/training unit and frozen version, covering every held-out case with `runs: 3` by default. Each case has cells with `run: 1`, `run: 2` and `run: 3`, all measured from the same frozen State. The pre-training baseline and final State each have a matrix. If the request changes the test repetition count, use that count in both the matrix and its spec. Keep detailed versions and token usage in the experiment report alongside these standard Evaluation Center entries.
+
+## Finish the experiment report
+
+Include the fixed experiment/report version and the resolved runtime, benchmark, model, toolkit and measured Skill/State versions recorded during [initialization](initialization.md). Each report must identify the actual versions used, with user-specified versions taking priority.
+
+For each frozen State, each test repetition includes every selected test case. Apply the benchmark's aggregation rule separately to each repetition. For a benchmark scored by the mean of N test cases, with R test repetitions:
 
 ```text
-protocol_version: 1
-status: ok
-case_id: <case_id>
-run: <run>
-agent_id: <test_agent_id>
-expected_version: <version>
-provider: <actual_provider>
-model_id: <actual_model_id>
-thinking_level: <configured_thinking_level>
-score: <0_to_100, two decimals>
-cost: <number_or_null>
-duration_ms: <non_negative_integer>
-session_id: <test_session_id>
+repeat_score[r] = sum_q score[r, q] / N
+mean = sum_r repeat_score[r] / R
+sample_std = sqrt(sum_r (repeat_score[r] - mean)^2 / (R - 1))
 ```
 
-   Failed (`null` for an identity field that was missing or conflicting; never a score, cost, duration, session id, private data or advice):
+Report `mean ± std`, where `std = sample_std`, and retain the R repetition scores. For example, three complete-test means of 60, 70 and 80 give `70 ± 10`. The standard deviation measures variation between complete test repetitions of the same frozen State. Calculate this standard deviation from repetition scores, not pooled case scores or an average of per-case standard deviations. Per-case summaries use that case's own R scores; preserve the individual measurements with their resource usage.
 
-```text
-protocol_version: 1
-status: failed
-case_id: <case_id_or_null>
-run: <run_or_null>
-agent_id: <test_agent_id_or_null>
-expected_version: <version_or_null>
-provider: <provider_or_null>
-model_id: <model_id_or_null>
-thinking_level: <thinking_level_or_null>
-failure_code: <invalid_request | benchmark_invalid | version_changed | evaluation_failed>
+For an aggregate across benchmarks on a common scale, average the same selected benchmarks within each repetition. This gives R overall scores; apply the mean and sample-standard-deviation formulas to those scores. Do not average the benchmarks' standard deviations.
+
+One test repetition has no sample standard deviation. Train has one measured pass and no across-training-run standard deviation. Keep Train and Test separate.
+
+Always report the pre-training baseline and final Test scores, with their `mean`, `std` and final-minus-baseline gain. These are measurements of the same held-out set using the frozen base and learned States; training scores do not substitute for either.
+
+For Evo, report the single training pass and compilation artifacts. There are no
+candidate retests or iterative acceptance scores from which to draw a training
+curve. A single training run has no across-run sample variance.
+
+For declared mean-score Benchmarks, the helper also validates complete matrices
+and computes repetition statistics:
+
+```bash
+python3 "$TOOLKIT/scripts/evo.py" summarize --request summary-request.json
 ```
 
-If the controller reports invalid formatting, resend only the clean YAML from the result already in this Session; do not call tools, relaunch or rescore.
+The request has `matrices`, one full native matrix per selected benchmark for
+one frozen condition, each declaring `aggregation: "mean"`. Use the matrix
+fields described above. The output retains domain repetition scores, overall
+repetition scores, mean, sample variance and sample standard deviation. Missing,
+duplicate, failed or mismatched cells invalidate the result; a measured zero is
+valid. One repetition returns `null` variance/std. Use the Benchmark's own rule
+when aggregation is not a mean; this helper refuses unsupported aggregation.
+
+The Evaluation Center's cost and duration fields are averages, not experiment totals. Include the separate Train/Test cost, time and token totals and their detailed records from the measurement section above.
+
+Keep frozen State archives, source identities, per-case results and artifact paths with the report. Save both a readable summary and structured scores, and deliver the results in the user's requested format. Continue scheduling until training and every requested test repetition are accounted for; report a concrete blocker when completion is impossible.

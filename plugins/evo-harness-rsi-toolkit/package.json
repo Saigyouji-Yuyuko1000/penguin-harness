@@ -1,12 +1,11 @@
 {
   "name": "@penguinharness/evo-harness-rsi-toolkit",
-  "version": "2026.10.28-6",
-  "description": "Evo-Harness: compile negative execution feedback into general and task-type skills, then freeze and evaluate through native Penguin workers.",
+  "version": "2026.10.28-7",
+  "description": "Evo-Harness RSI Toolkit: reflect on negative feedback in the original Solver Session, compile one batch of reusable skills, then freeze and evaluate.",
   "keywords": [
     "penguin-plugin",
     "penguinharness",
-    "skills",
-    "hooks"
+    "skills"
   ],
   "license": "Apache-2.0",
   "repository": {
@@ -17,7 +16,6 @@
   "files": [
     "icon.svg",
     "skills",
-    "hooks",
     "LICENSE",
     "README.md"
   ],
@@ -39,36 +37,9 @@
       "prompt": "Use the selected Benchmark for Evo-Harness RSI, resolve this Project’s experiment settings, and autonomously complete learning, export, freezing and the Base/Skill comparison. Ask once for required missing inputs.",
       "prompt_zh": "使用指定 Benchmark 进行 Evo-Harness RSI；自动读取本项目已有实验配置，按冻结方法完成学习、导出、Base／Skill 对比和汇总，必要缺项集中询问一次。"
     },
-    "icon": "icon.svg",
-    "hooks": {
-      "version": "2026.10.28.6",
-      "user_prompt": [
-        {
-          "command": "guard.mjs",
-          "timeout": 30,
-          "trigger": "prompt"
-        }
-      ],
-      "pre_tool_use": [
-        {
-          "command": "guard.mjs",
-          "timeout": 30
-        },
-        {
-          "command": "guard.mjs",
-          "timeout": 30,
-          "scope": "subagent"
-        }
-      ],
-      "stop": [
-        {
-          "command": "guard.mjs",
-          "timeout": 30
-        }
-      ]
-    }
+    "icon": "icon.svg"
   },
   "scripts": {
-    "test": "python3 -B -m unittest discover -s tests -v"
+    "test": "python3 -B -m unittest discover -s skills/evo-harness-rsi-toolkit/scripts -p \"test_*.py\" -v"
   }
 }

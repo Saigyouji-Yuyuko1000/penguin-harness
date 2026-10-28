@@ -1,23 +1,19 @@
-# Evo-Harness benchmark adapters
+# Evo-Harness RSI toolkit
 
 - **Date:** 2026-10-28
 - **Type:** feature
-- **Scope:** `skills`, `core`, `server`, `amsp`
+- **Scope:** `skills`
 - **PR:** [Saigyouji-Yuyuko1000/penguin-harness#3](https://github.com/Saigyouji-Yuyuko1000/penguin-harness/pull/3)
 
 [中文版](2026-10-28-evo-benchmark-adapters.zh.md)
 
-Added the Evo-Harness plugin on the .6 learning baseline, with native Session feedback, scoped Solver tools and background-work waiting. Kept Evo and SkillAdam as separate plugins.
+Added Evo-Harness as an RSI plugin using the existing native delegation,
+Session continuation and Agent State interfaces.
 
 ## Details
 
-- Added automatic official resource acquisition, commit-pinned caches and complete Project package fingerprints.
-- Packaged Evo's runtime preparation, State transport and trial acceptance helpers with the plugin.
-- Added one training pass and three tests per frozen State by default. Reports aggregate domain scores within each repetition before calculating sample variance and standard deviation.
+- Added one training pass, negative-feedback reflection in the original Solver Session and one independent batch compilation.
+- Added validation for candidate references, ADD/MERGE/REVISE/SKIP decisions and complete Skill exports within the byte budget.
+- Kept general descriptions and complete matching-topic bodies in the frozen task context.
+- Added three complete Base/Skill test repetitions by default, native scoreboard reports and statistics across repetition scores.
 - Registered the plugin in package dependencies, catalogs and documentation.
-
-## Compatibility
-
-Retained the historical Skill formats through read-only verification; see [backward compatibility](2026-10-28-backward-compatibility.md). Ordinary post-exit Harbor verifiers still require an original-Session feedback adapter for full Evo learning.
-
-The 2026.10.28.4 engineering revision included the plugin README in the exact published bundle inventory, retaining file hashes and private-path restrictions.

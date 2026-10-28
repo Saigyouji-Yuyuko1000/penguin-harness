@@ -1,128 +1,26 @@
-# Native learning roles
+# Learning roles
 
-Learn reusable methods from actual execution. Build one connected procedure:
-applicability -> required output fields -> authorized queries and joins ->
-calculation or judgment -> values written to those fields, with branch boundaries.
-Preserve correct operations; change only evidence-supported gaps. A warning list
-or a business rule inferred from a low total score does not supply a method.
+Pass the complete relevant role text in the native child prompt, together with
+the frozen runtime, material grants and output paths. A path or acknowledgment
+does not establish that material was read: inspect full tool observations and
+native records. These are cooperative instructions, not a runtime sandbox.
 
-For GDPevo, use the public task, payload/schema and observed tool responses to
-ground that procedure. Keep useful interface/table/field names, join keys, units,
-date basis and output types; parameterize task-specific IDs, dates and amounts.
-State the filter and record grain before aggregating, the operand order and
-rounding when computing, and which requested field uses the result. An endpoint
-must come from the public interface or an authorized observation, not a guessed
-path. An output enum permits values; it does not by itself define a decision rule.
-Related tasks may use different fields for a blocker, team, route and status:
-reuse the evidence-gathering method while preserving each task's output contract.
+## Solver
 
-For ordinary RSI the host calls `run_subagent` with the complete role text.
-For guarded continuous GDPevo the group root first uses control.py role-request
-and invokes its returned native call unchanged; the helper does not dispatch.
-The role text travels in the returned `prompt_file`/`prompt_sha256` pair or the
-ordinary inline `prompt`. Every call includes the explicit `provider`,
-`model_id`, `thinking_level`, and optionally `run_in_background:true`. Neither
-`cwd` nor permissions are tool arguments: workspace and approval inherit the
-parent. Verify effective paths/model in session_meta and thinking in request
-events. `input_subagent` addresses the returned subagent id; never assume a
-leaf has either subagent tool (Penguin 0.2.16 maximum depth is 1).
+Use all general descriptions and all matching topic bodies in your frozen
+initial context before task actions. Solve only the assigned public training
+task through its allowed business tools. Preserve the final answer at the
+assigned path and obtain its real grade exactly once through the documented
+interface. Observe the entire authorized feedback, not just a score or summary.
+Do not read hidden solutions, grader source, other answers, candidates or Test.
+Do not edit Skills or reset shared business state.
 
-Every prompt includes the complete relevant section below plus the bound
-task/attempt id, allowed material paths and output path. Except for Solver public
-inputs described below, read every assigned material and this role text through `read-material` at
-offsets 0, 4000, 8000, ... until end=total; require full JSON tool output for
-each 4000-character chunk. This supplies machine-auditable read receipts.
-Use exactly one foreground helper invocation per exec: python3 -B followed by
-the literal absolute helper path and literal absolute request path. Write the
-request with native write_file first. Never combine read-material calls, use
-shell variables or loops, pipe, redirect, or background receipts. Await every
-complete receipt; independent parallel reads must all finish before sealing.
-Penguin exec_command has no per-call max_output_tokens argument; capacity is the
-fixed State maxOutputLength. If a receipt is truncated or missing, reread that
-single offset with the same helper in the same leaf; never change State or
-repeat judge. Record original trace evidence, not copied or parent-read receipts.
-Guarded Solver reflection/Evolver outputs use the fixed seal-role-output request supplied
-in their prompt, not file-digest. The helper verifies the leaf's complete actual
-reads and draft structure. On missing offsets, the same leaf reads those chunks
-and retries sealing; on structural errors, it fixes its own unsealed draft.
-An unexecuted helper request may likewise be corrected with write_file using its
-fixed template. Repairs add no Solver attempt or scoring call and never erase
-an executed boundary violation. Once sealed, do not edit
-the output. Ordinary unguarded RSI continues to use file-digest after all reads.
-An acknowledgment or a path in the prompt alone is not proof of reading.
-
-## Solver (group training leaf)
-
-Before substantive work, use the frozen learned context supplied by install-context
-in your native initial system prompt when training.json declares agents-md-v1.
-It includes the Reader, every general description and all current-context/topic
-bodies. No selector or extra Skill read is needed. If that transport is not frozen,
-observe the complete Reader and every listed body through the supplied native read
-plan before business work. Own AGENTS.md and training.json are preparation, not
-hidden answers. Read the complete assigned role file with
-read-material. Every granted public input must be fully observed before solving:
-complete successful native read_file output also satisfies that input's audit,
-so do not duplicate a full native read with the helper. Normal offset/limit pages
-may cover a file together, with every numbered line observed. Truncated output,
-a line over 2000 UTF-16 units, or files at least 8 MiB require read-material
-chunks instead. Native input observations must finish before the single judge.
-This option applies only to granted public inputs; feedback and learning
-materials still require helper receipts. Solve exactly the assigned training task, using its public instruction and
-payloads, environment_access.md and allowed business service. All pre-batch
-guidance is loaded; apply a rule only when its task conditions and necessary
-premises hold. Leave the final answer
-at the assigned submission path. Do not inspect siblings' answers, candidate
-files, tests, solutions, private grader/rulebook/gold files, or remote task
-repositories. Do not edit any Skill. Do not reset or concurrently write the
-shared business service. Once the final answer is written, run the data-only
-prepare-judge-request helper with task_id and the local /api/judge URL from
-environment_access.md. It derives the frozen attempt, roster, answer and feedback
-paths from the installed training.json, writes the canonical judge request and
-returns its exact command. Preparation makes no HTTP call. The judge helper
-checks full public-input, role and inherited Skill observations before HTTP.
-If it returns `judge-readiness` with `ready: false`, follow the exact `read_plan`
-paths and requests, then retry that same command: no scoring call was consumed.
-Only one actual scoring call is allowed. Do not choose another output/attempt/config namespace.
-The canonical command has this form:
-
-```text
-python3 -B <absolute-installed-evo.py> <absolute-canonical-judge-request.json>
-```
-
-No direct curl/HTTP probe, shell wrapper, chained command or alternate helper
-is permitted. After actual scoring, the CLI returns a short evo-judge-receipt
-binding the canonical feedback ledger path, hash and byte count; do not invoke
-the judge helper again. Read that ledger completely with read-material at offsets
-0, 4000, 8000, ... until end=total; retain every untruncated chunk so the actual
-raw external feedback reaches your native trace. Do not treat the short receipt
-alone as full feedback evidence. On judge error stop and
-report the error, never use a zero/self-score or retry an answer. The answer is
-frozen at scoring. Continue in this same native Solver Session with the same
-model and actual conversation history; do not delegate reflection or ask a new
-Agent to reread a trace. Once the complete successful feedback ledger has been
-observed, follow the in-session reflection section for negative feedback only.
-A successful task returns without candidates. A negative task must complete
-and seal reflection even when it yields an explicit empty candidate array.
-
-Return the answer, canonical judge/feedback paths, reflection seal if required,
-and your Session id; do not end the native run before this work completes.
-
-Before judge, finish all input and role reads and understand the supplied candidate
-contract. Ordinary preparation JSON may use the assigned request directory.
-After the single judge, use your own conversation first. Once full feedback is
-observed, the declared observed-v1 reflection-evidence entry may reread an already
-observed bound input or transform a complete pre-judge JSON tool observation.
-It performs only explicit row filters/grouping/counts/sums/min/max; it cannot
-open a cache path, execute Python, contact a service or use another task. Write
-own candidate/request JSON and seal through the fixed entry. Do not alter the answer,
-rescore, query the business service, read another task/candidate/test material,
-or retrieve the skill library for curation. Retain the information already in
-your conversation. Before retrying a missing feedback chunk or unsealed format
-repair, inspect the existing receipt in this Session; never repeat solve or
-judge. A sealed output is immutable and reflection must not run again. The
-coordinator captures the terminal trace only after your native completion
-notice. Missing or conflicting evidence is a method failure. These are checked
-cooperative execution constraints, not a sandbox for arbitrary hostile code.
+After scoring the answer is immutable. On successful feedback return without
+candidates; on negative feedback perform the following reflection in this
+same native Solver Session, with your actual history and unchanged model.
+Do not query business services, rescore, acquire new evidence or retrieve the
+private library. A feedback failure is incomplete work, not negative feedback.
+Return answer/feedback/artifact paths and your native Session ID.
 
 ## In-session reflection
 
@@ -140,8 +38,7 @@ eligible; completely successful attempts produce no candidate. Judge/transport
 failure is not task failure. Do not compare against the skill library.
 
 Output a JSON array of zero or more candidates with `id`, `task_id`,
-`attempt_id`, `lesson`, `trigger`, `evidence`, `scope_hint`. In continuous group
-training every id starts with the assigned <task_id>-<attempt_id>- prefix, followed
+`attempt_id`, `lesson`, `trigger`, `evidence`, `scope_hint`. Every id starts with the assigned <task_id>-<attempt_id>- prefix, followed
 by a local unique suffix, for example train_001-attempt-1-c01. Different tasks must not invent a shared batch-wide counter. Evidence items use
 `kind` (input/tool/answer/feedback), `claim`, `epistemic` (observed/inferred);
 input references carry the exact sha256 from the initial prompt's input_refs;
@@ -174,30 +71,31 @@ Unknown benefit is different from an unsupported premise: retain the former,
 but turn the latter into a bounded check of authorized evidence, narrow the
 lesson or omit it. Keep uncertainty in lesson, trigger and scope_hint as well
 as evidence. Write for future similar tasks; temporary IDs, dates, amounts and
-answers stay in the private record, not as business constants. Zero candidates
-is valid only after this negative-feedback reflection was performed and sealed.
+answers stay in the private record, not as business constants. Zero candidates is valid only after this negative-feedback reflection was performed.
 For a weak attempt, verify the reusable substep against the already observed
 records: reproduce its filter, join keys, units and calculation or its logical
-premises, using observed-v1 local computation when needed. Keep the result and
+premises, using pure computation over already observed data when needed. Keep the result and
 its evidence in the candidate; do not call an untested proposed repair verified
 or attribute a low scalar score to it. A verified substep is useful experience
 even when the whole answer was poor; no new judge or training attempt is implied.
-Use the fixed validation/seal request supplied in your original Solver prompt;
-this checks structure and references, not the truth of an interpretation.
-A normal `complete: false`, `code: candidate_draft_invalid` seal result permits
-correction of your own unsealed draft; fatal boundary errors remain terminal.
-Use the initial contract's exact output_path and write_call template (also
-returned with candidate_draft_invalid). Replace only arguments.content with
-the complete corrected JSON array as text and call native write_file directly.
-Under native-draft-v1, native edit_file may also correct this same Session's own unsealed candidates.json; no other file may be edited. An audited pre-tool denial with an aborted native result proves the tool did not execute: use the returned legal entry and continue. Use the draft already in your history; no Python/shell read-modify-write is needed or permitted. Then use the fixed seal-role-output request (file-digest only for unguarded RSI) and return
-its receipt. The sealed output is fixed; the coordinator cannot rewrite it. The internal
-seal label `reflector` identifies this phase of the original Solver, not a new
-Agent or a second billable Session. You do not edit State.
+
+Write the complete candidate JSON array to the assigned path. Correct structural
+errors in your own unfinished draft in this same Session. Return its path and
+Session ID. Once complete, do not run the reflection again. A candidate has:
+
+```json
+{
+  "id": "train_001-attempt-1-c01", "task_id": "train_001", "attempt_id": "attempt-1",
+  "lesson": "<supported reusable method>", "trigger": "<applicability>",
+  "scope_hint": "<boundary and uncertainty>",
+  "evidence": [{"kind": "feedback", "claim": "<what the grade actually states>", "epistemic": "observed"}]
+}
+```
 
 ## Evolver
 
 Compile the reusable methods above from the frozen batch. Read all authorized
-candidates, the complete pre-batch library and all five bound training contexts.
+candidates, the complete pre-batch library and all selected training contexts.
 Check candidates against the original inputs, actions, final delivery and
 counterevidence. A scalar score does not locate a failed field or prove a proposed
 repair; success does not certify every local judgment. Successful contexts can
@@ -272,20 +170,17 @@ ceilings, not quotas. ADD uses a new id; MERGE/REVISE targets an existing entry;
 combine changes to the same target. SKIP may name general/topic/all and records
 unsupported premises, contradictions, duplication or noise without invention.
 
-The prompt supplies frozen limits, max_bytes and a validate-decisions request.
-Each retained entry is an independent native Skill. The entire package, including
-Reader, manifest, metadata and ALL stored bodies, must fit 16,000 UTF-8 bytes;
-max_bytes can be lower. Each physical line fits 2000 UTF-16 units. Validate the
-complete rendering before sealing. If too large, refine the unsealed methods,
-merge supported overlap or justify SKIP; export and injection never clip or drop
-rules. The helper validates structure and provenance, not semantic truth.
 
-For example, instead of "avoid duplicate counts", a method for failed DAYS
-filters the required entity, failure status and time window, converts timestamps
-to the specified date basis, deduplicates dates, then counts; use row count only
-if one eligible run per day is established. If that was already done, retain it
-without claiming a repair. This is a synthetic expression example, not a new
-domain rule. Produce only requested answer fields, and no executable support code.
-Seal through the supplied seal-role-output request (file-digest only in ordinary
-unguarded RSI). You do not publish Target State. No test material/feedback,
-training retest, score acceptance gate, extra learning pass or model change.
+The helper validates the complete package against five general entries, five per
+topic and 16,000 UTF-8 bytes, including Reader, manifest and all exported files.
+If oversized, refine your unfinished methods, merge supported overlap or justify
+SKIP; export and injection never clip or silently drop rules. An entry contains
+`id`, `level`, `trigger`, `scope`, `body`, plus `topic` for topic entries or a
+self-contained `description` for general entries. A decision contains `op`,
+`candidate_ids`, `reason` and its complete `entry` for non-SKIP operations.
+SKIP may specify `level: "general"`, `"topic"` or `"all"` (default).
+
+Produce one final decision array. Validate it within this same compilation call;
+structural fixes do not authorize a new Solver, judge, model reviewer or learning
+pass. The helper checks structure and references, not semantic truth. Do not
+publish State, include executable support code or use any test material/feedback.
