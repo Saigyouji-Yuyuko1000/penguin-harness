@@ -3,7 +3,7 @@
 - **Date:** 2026-10-28
 - **Type:** feature
 - **Scope:** `skills`, `core`, `server`, `amsp`
-- **PR:** [Saigyouji-Yuyuko1000/penguin-harness#2](https://github.com/Saigyouji-Yuyuko1000/penguin-harness/pull/2)
+- **PR:** [Saigyouji-Yuyuko1000/penguin-harness#3](https://github.com/Saigyouji-Yuyuko1000/penguin-harness/pull/3)
 
 [English](2026-10-28-evo-benchmark-adapters.md)
 
