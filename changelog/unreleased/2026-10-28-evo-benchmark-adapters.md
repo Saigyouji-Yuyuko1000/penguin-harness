@@ -14,6 +14,10 @@ Session continuation and Agent State interfaces.
 
 Reports use shared `baseline`/`final`, repetition, version, score and resource field names. Keep method-specific learning records separate from repeated Test statistics.
 
+Training progress uses numbered `step` labels and retains native stage names for traceability.
+
+Plugin packages omit development test files.
+
 - Added manifest-based resource resolution, commit-pinned official caches, one-call training feedback, root `SKILL.md` exports and verified native State installation.
 
 - Added one training pass, negative-feedback reflection in the original Solver Session and one independent batch compilation.
