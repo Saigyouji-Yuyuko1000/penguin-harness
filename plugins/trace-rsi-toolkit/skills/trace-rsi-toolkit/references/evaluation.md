@@ -24,6 +24,7 @@ translate their fields when assembling the report, retaining the original artifa
 | `started_at`, `finished_at`, `duration_ms` | Actual UTC timestamps and elapsed milliseconds at the same granularity as cost. |
 | `tokens` | `cached_input`, `uncached_input`, `output`, `total_input` and `total`, in tokens. |
 | `curve_kind` | `benchmark_score` for measured training scores, `virtual_validation` for proxy checks, or `none` when no iterative measurements exist. |
+| `step`, `native_stage` | Zero-based training record order and optional original stage label. `step` is independent of the Test repetition `run`; `native_stage` maps back to original artifacts. |
 
 Use `baseline` and `final` in result tables, even when the method calls its learned
 artifact a bank or library. `baseline` describes the State saved before learning; its
@@ -32,6 +33,12 @@ base configuration and any fixed reader in `baseline_definition`. Do not call it
 “No Skill” if a user-supplied learned Skill was already present. `final` means the
 method's exported result, which may be a training-selected checkpoint rather than the
 last attempted revision. Record that selection separately.
+
+Display training progress as `Step 0`, `Step 1`, and so on, with the recorded State or
+artifact version. Keep method-specific names such as `S0`, `H1` and `B0` in `native_stage`
+or raw records. A step orders observed training stages; it does not imply a new accepted
+State or an improvement. Preserve current/candidate scores, acceptance decisions and
+regressions where the method has them. When `curve_kind` is `none`, do not invent a curve.
 
 For each Benchmark, and for the equal-weight overall result, include a comparison with
 this shape (illustrative scores):
@@ -74,7 +81,7 @@ Collect H1 and B0…BR task × A matrices, immutable submitted candidates, judge
 
 Training uses one continuous run by default. Its within-batch task/attempt scores do not provide a standard deviation across independent training runs. Report stage mean, coverage and selected stage separately from the native training verifier score. The latter grades exported answers and does not prove all training phases ran.
 
-Set `curve_kind: benchmark_score`. Preserve H1 and B0…BR as training-stage labels; export the selected checkpoint as `variant: final` in Test results. Neither H1 nor B0 is an extra required Test comparison.
+Set `curve_kind: benchmark_score`. Map H1 and B0…BR to `native_stage`, displaying their recorded order as `Step 0`, `Step 1`, and so on. Export the selected checkpoint as `variant: final` in Test results. Neither H1 nor B0 is an extra required Test comparison.
 
 Freeze `best_train` selection before reading held-out results. Test the exact exported snapshot. Keep training evidence outside the deployed bank and preserve all stages even when they are not tested.
 
@@ -94,7 +101,7 @@ Report `mean ± sample SD` over complete repetition means, as required by the be
 
 A per-case row may show that case's mean and sample SD across its K trials. When reporting an equal-weight macro-average across benchmarks, first average benchmark means within each repetition, then compute SD across those aggregate repetition means. Label any alternative weighting. Preserve raw matrices so both levels are reproducible.
 
-Show no-Skill and selected-bank results side by side, their mean difference, selected stage/hash and coverage. An incomplete matrix is preliminary and shows missing cells; do not turn different subsets into a complete comparison. H1 training results do not replace the held-out baseline. Pass@K or all-repetitions success may be supplementary when requested; neither is the mean score.
+Show `baseline` and `final` results side by side, their mean difference, selected stage/hash and coverage. An incomplete matrix is preliminary and shows missing cells; do not turn different subsets into a complete comparison. H1 training results do not replace the held-out baseline. Pass@K or all-repetitions success may be supplementary when requested; neither is the mean score.
 
 ## Costs, tokens and time
 
