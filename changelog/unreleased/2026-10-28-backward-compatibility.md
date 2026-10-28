@@ -3,6 +3,7 @@
 - **Date:** 2026-10-28
 - **Type:** fix
 - **Scope:** `skills`
+- **PR:** [Saigyouji-Yuyuko1000/penguin-harness#2](https://github.com/Saigyouji-Yuyuko1000/penguin-harness/pull/2)
 
 [中文版](2026-10-28-backward-compatibility.zh.md)
 
