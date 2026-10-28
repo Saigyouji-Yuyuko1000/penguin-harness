@@ -1,7 +1,7 @@
 ---
 name: evo-harness-rsi-toolkit
-description: "Run Evo on selected Project Benchmarks: one training pass, negative-feedback reflection in the original Solver Session, one batch compilation, then repeated frozen Base/Skill evaluation."
-version: 2026.10.28.8
+description: "Run Evo on selected Project Benchmarks: one training pass, negative-feedback reflection in the original Solver Session, one batch compilation, then repeated frozen baseline/final evaluation."
+version: 2026.10.28.9
 ---
 
 # Evo-Harness
@@ -26,7 +26,7 @@ Reuse the Project's saved connection through the supported runner; do not read
 keys or server tokens into prompts. Resolve missing required inputs together.
 Assign an experiment version before launch. Use the complete selected splits
 unless the user selects otherwise. Train once per domain or independent unit;
-freeze its result and test both Base and Skill three complete times by default.
+freeze its result and test both baseline and final three complete times by default.
 
 ## Learning method
 
@@ -47,6 +47,8 @@ candidates, a second learning pass or SkillAdam's optimizer.
 
 ## Complete the experiment
 
+Use the [common report fields](references/evaluation.md#common-report-fields): `baseline` and `final` for the two frozen States, `run` for test repetitions, and `mean`, `std` and `final_minus_baseline` for the comparison. Keep training stages separate from test repetitions.
+
 1. Follow [setup](references/initialization.md). Resolve the native source once,
    keep its actual commit, prepare a common base and separate training State,
    and confirm original-session feedback before spending the training budget.
@@ -58,8 +60,8 @@ candidates, a second learning pass or SkillAdam's optimizer.
    and the exported Skill package. Verify original Solver identities, one grade
    per task, complete feedback observation and one final Evolver. An invalid
    trace remains a method deviation even if its score is present.
-4. Construct Base and Skill test States from the common base, adding only the
-   frozen learned package and exact topic context to Skill. Freeze both before
+4. Construct baseline and final test States from the common base, adding only the
+   frozen learned package and exact topic context to final. Freeze both before
    testing. Each test case and repetition starts in a fresh environment and
    Session. Keep histories, answers, training instructions and private library
    out of both States. Test feedback never changes the learned package.

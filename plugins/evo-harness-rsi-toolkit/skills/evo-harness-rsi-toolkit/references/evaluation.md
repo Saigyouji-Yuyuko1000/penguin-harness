@@ -2,6 +2,62 @@
 
 The benchmark supplies the evaluator and defines its Train/Test splits. Use its measured scores and execution evidence throughout. The controller schedules one whole training run per benchmark or independent training unit, then three test repetitions of each frozen State by default. The Solver attempts, original-session reflections and one batch Evolver stay inside the training Target's Session and environment.
 
+## Common report fields
+
+Use these names in the final experiment report so results from different RSI methods can
+be compared. Keep native worker protocols, journals and `scoreboard.yaml` unchanged;
+translate their fields when assembling the report, retaining the original artifacts.
+
+| Field | Meaning |
+| --- | --- |
+| `method` | Toolkit method id: `skilladam`, `evo-harness`, `openskill` or `trace`. |
+| `experiment_version`, `component_versions` | Stable report identity and the actual Harness, runner, Benchmark, model and toolkit versions. User-specified versions take priority. |
+| `benchmark_id`, `training_unit_id` | Published evaluation Benchmark id and the independent unit that produced its learned artifact. Record the paired Train package separately; Train and Test are separate measurements of one experiment. |
+| `phase` | `train`, `test` or `controller` for resource attribution. |
+| `variant` | `baseline` for the pre-training State, `final` for the frozen learned State. Record any requested extra control by its own name. |
+| `run`, `runs` | One-based complete-test repetition index and total repetitions, normally 3. A retry, training iteration or candidate is not another test repetition. |
+| `state_version`, `state_sha256` | Measured frozen State identity; distinct from the experiment version. Map native `version`/`expected_version` here. |
+| `repetition_scores`, `mean`, `std` | Every complete repetition's score, their mean and sample standard deviation with denominator `runs - 1`. One repetition gives `std: null`. |
+| `final_minus_baseline` | Final Test mean minus baseline Test mean, in score units. Calculate from unrounded means. |
+| `case_id`, `score` | Published case id and its measured score in each test repetition. Record the metric, scale and aggregation rule; call it accuracy only when the Benchmark does. |
+| `cost_usd` | Measured USD for this record; native scoreboard `cost` has this unit but its aggregate fields are averages. |
+| `started_at`, `finished_at`, `duration_ms` | Actual UTC timestamps and elapsed milliseconds at the same granularity as cost. |
+| `tokens` | `cached_input`, `uncached_input`, `output`, `total_input` and `total`, in tokens. |
+| `curve_kind` | `benchmark_score` for measured training scores, `virtual_validation` for proxy checks, or `none` when no iterative measurements exist. |
+
+Use `baseline` and `final` in result tables, even when the method calls its learned
+artifact a bank or library. `baseline` describes the State saved before learning; its
+measurement may happen after learning when the method requires that order. Record its
+base configuration and any fixed reader in `baseline_definition`. Do not call it
+“No Skill” if a user-supplied learned Skill was already present. `final` means the
+method's exported result, which may be a training-selected checkpoint rather than the
+last attempted revision. Record that selection separately.
+
+For each Benchmark, and for the equal-weight overall result, include a comparison with
+this shape (illustrative scores):
+
+```json
+{
+  "baseline": { "repetition_scores": [60, 70, 80], "mean": 70, "std": 10 },
+  "final": { "repetition_scores": [75, 80, 85], "mean": 80, "std": 5 },
+  "final_minus_baseline": 10
+}
+```
+
+For a case, compute statistics from its own repetition scores. For a Benchmark, first
+aggregate all selected cases within each repetition; for overall, first average the same
+selected Benchmarks within each repetition. Only then calculate `mean` and `std`.
+Keep full precision until display. These are repeated-test means, not best-of-three or
+pass@3. No intermediate-Skill Test comparison is required.
+
+Retain one resource summary per complete training unit, including all its learned files,
+and one record per Test `benchmark_id × variant × case_id × run`. Keep disjoint controller
+usage and failed-attempt usage, separate Train/Test totals, and actual experiment wall time.
+A library with several Skills has one shared training cost, not a repeated charge per file.
+Missing measurements remain `null`; label incomplete totals. Keep the method's own training
+stages and diagnostics alongside these common fields, without pooling virtual rates,
+training scores or optimizer variance into Test `std`.
+
 ## The launch worker
 
 Receive the experiment root, benchmark, training unit, phase, test repetition index when testing, published case ID if applicable, native task path, resolved checkout, State archive and identity, runtime, optional install bundle and unique output path from the controller. Resolve the selected benchmark's launch instructions through [initialization.md](initialization.md).
@@ -103,6 +159,7 @@ Always report the pre-training baseline and final Test scores, with their `mean`
 For Evo, report the single training pass and compilation artifacts. There are no
 candidate retests or iterative acceptance scores from which to draw a training
 curve. A single training run has no across-run sample variance.
+Set `curve_kind: none`; retain the per-task training scores and compilation decisions.
 
 For declared mean-score Benchmarks, the helper also validates complete matrices
 and computes repetition statistics:
@@ -120,5 +177,7 @@ valid. One repetition returns `null` variance/std. Use the Benchmark's own rule
 when aggregation is not a mean; this helper refuses unsupported aggregation.
 
 The Evaluation Center's cost and duration fields are averages, not experiment totals. Include the separate Train/Test cost, time and token totals and their detailed records from the measurement section above.
+
+Run `summarize` separately for `baseline` and `final`. Map its `domains` entries to the selected Benchmarks and retain their `repetition_scores`, `mean` and `std` in the common comparison, alongside its `overall` result. Compute `final_minus_baseline` from the unrounded means. The helper's `variance` is an additional diagnostic, not the value after ±.
 
 Keep frozen State archives, source identities, per-case results and artifact paths with the report. Save both a readable summary and structured scores, and deliver the results in the user's requested format. Continue scheduling until training and every requested test repetition are accounted for; report a concrete blocker when completion is impossible.

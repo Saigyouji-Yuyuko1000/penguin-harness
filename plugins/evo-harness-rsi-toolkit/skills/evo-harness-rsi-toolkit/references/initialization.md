@@ -54,6 +54,9 @@ failed grader or create a new Reflector to reconstruct the conversation.
 Record the experiment version, Harness/runner/toolkit versions, actual source
 commit and package hashes, model/thinking level, training roster/order, topic,
 negative-feedback predicate, limits, budget, repetition count and output paths.
+Prefer the user's specified versions; otherwise resolve the available versions once.
+Record a concrete model revision when exposed, or leave it unknown alongside the
+actual provider/model identifier. Keep this configuration fixed through testing.
 Keep a job index with phase, benchmark, State digest, case, repetition, native
 job/Session ID and completion status. Do not overwrite earlier experiment data.
 
