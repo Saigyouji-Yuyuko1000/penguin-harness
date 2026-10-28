@@ -12,6 +12,8 @@ Session continuation and Agent State interfaces.
 
 ## Details
 
+- Added manifest-based resource resolution, commit-pinned official caches, one-call training feedback, root `SKILL.md` exports and verified native State installation.
+
 - Added one training pass, negative-feedback reflection in the original Solver Session and one independent batch compilation.
 - Added validation for candidate references, ADD/MERGE/REVISE/SKIP decisions and complete Skill exports within the byte budget.
 - Kept general descriptions and complete matching-topic bodies in the frozen task context.

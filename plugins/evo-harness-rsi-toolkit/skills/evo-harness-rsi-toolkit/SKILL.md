@@ -1,7 +1,7 @@
 ---
 name: evo-harness-rsi-toolkit
 description: "Run Evo on selected Project Benchmarks: one training pass, negative-feedback reflection in the original Solver Session, one batch compilation, then repeated frozen Base/Skill evaluation."
-version: 2026.10.28.7
+version: 2026.10.28.8
 ---
 
 # Evo-Harness
@@ -14,7 +14,8 @@ If the message only names this Skill, ask which experiment to run. An explicit
 experiment request authorizes the workflow below.
 
 Resolve the requested Benchmark by name or
-package path from the current Environment's App Data Dir. Read its manifest,
+package path from the current Environment's App Data Dir. Resolve and freeze its resources using [setup](references/initialization.md).
+Read its manifest,
 Case statements and linked run instructions. Use its declared Train/Test split,
 task sources, adapter and scoring. A name is sufficient when its package is
 installed; do not ask the user to supply a source link already in the package.

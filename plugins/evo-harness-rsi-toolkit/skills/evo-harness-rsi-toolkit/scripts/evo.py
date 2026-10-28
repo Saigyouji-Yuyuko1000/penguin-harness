@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Evo batch validation, native Skill export and complete-test reporting.
 
-Standard library only. No model calls, task execution, grading or state publication.
+Standard library only. No model calls or task scheduling. The grade command sends one authorized training answer to its native judge.
 The evaluation matrix/scoreboard format follows the sibling RSI toolkits.
 """
 import argparse
@@ -235,6 +235,7 @@ READER = """# Evo method reader
 Use every general description and every full method for the assigned topic
 provided below before substantive task work. Each method remains conditional
 on its trigger and scope. General bodies are private and are not loaded.
+When there are no methods, solve using the unchanged base instructions.
 Do not select, retrieve, truncate or borrow methods from another topic.
 """
 
@@ -244,7 +245,7 @@ def render(library, topic, max_bytes=16000):
     nonempty(topic, "topic")
     if type(max_bytes) is not int or not 0 < max_bytes <= 16000:
         raise ValueError("max_bytes must be an integer in 1..16000")
-    files = {"evo-reader/SKILL.md":
+    files = {"SKILL.md":
              '---\nname: evo-reader\ndescription: "Read the frozen Evo methods."\n---\n' + READER}
     manifest, context = [], [READER]
     for key, entry in sorted(library.items()):
@@ -260,7 +261,7 @@ def render(library, topic, max_bytes=16000):
                          if field in entry} | {"path": path})
         if entry["level"] == "general" or entry["topic"] == topic:
             context.append(body)
-    files["evo-reader/manifest.json"] = json.dumps(
+    files["manifest.json"] = json.dumps(
         {"version": 1, "entries": manifest}, ensure_ascii=False, indent=2) + "\n"
     size = sum(len(body.encode("utf-8")) for body in files.values())
     if size > max_bytes:
@@ -408,11 +409,13 @@ def summarize(request):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("compile", "export", "summarize"):
+    for name in ("compile", "export", "install", "grade", "summarize"):
         command = commands.add_parser(name)
         command.add_argument("--request", required=True)
         if name == "export":
             command.add_argument("--output", required=True)
+        if name == "install":
+            command.add_argument("--state", required=True)
     publication = commands.add_parser("report")
     for name in ("matrix", "spec", "time", "step", "summary"):
         publication.add_argument("--" + name, required=True)
@@ -424,10 +427,17 @@ def main():
             result = report(**args)
         else:
             request = read_object(args["request"])
-            result = (export(request, args["output"]) if command == "export" else
-                      compile_batch(request) if command == "compile" else summarize(request))
+            if command == "grade":
+                from feedback import grade
+                result = grade(request)
+            elif command == "install":
+                from state import install_package
+                result = install_package(request, args["state"])
+            else:
+                result = (export(request, args["output"]) if command == "export" else
+                          compile_batch(request) if command == "compile" else summarize(request))
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
-        return 0
+        return 2 if command == "grade" and result["status"] != "ok" else 0
     except (ValueError, OSError, KeyError, TypeError, AttributeError, OverflowError) as error:
         print(json.dumps({"error": str(error)}), file=sys.stderr)
         return 2

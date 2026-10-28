@@ -190,10 +190,10 @@ class ExportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             destination = Path(temp) / "skills"
             evo.export({"library": [], "topic": "orders"}, destination)
-            original = (destination / "evo-reader/SKILL.md").read_bytes()
+            original = (destination / "SKILL.md").read_bytes()
             with self.assertRaises(FileExistsError):
                 evo.export({"library": [entry()], "topic": "orders"}, destination)
-            self.assertEqual((destination / "evo-reader/SKILL.md").read_bytes(), original)
+            self.assertEqual((destination / "SKILL.md").read_bytes(), original)
 
     def test_entry_limits_apply_per_topic_and_general_descriptions_are_required(self):
         library = [entry(str(i)) for i in range(5)] + [entry("other", topic="other")]
