@@ -534,7 +534,8 @@ export interface CompactionEndPayload extends RetryDetail {
 }
 
 /** A hook's decision: at the stop point `continue` keeps the run going (its injected input follows as the next user message) and `stop` lets the run end; at the pre_tool_use point `allow` approves the call without asking and `deny` refuses it. */
-export type HookDecision = "continue" | "stop" | "allow" | "deny";
+// A stop hook can yield to its existing background work without injecting input.
+export type HookDecision = "continue" | "stop" | "wait" | "allow" | "deny";
 
 /**
  * Hook result event: one per non-void answer a hook gave at a hook point — `stop`,

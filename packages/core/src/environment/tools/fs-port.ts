@@ -16,6 +16,15 @@ import path from "node:path";
 import { mkdir, open, readdir, readFile, readlink, realpath, stat } from "node:fs/promises";
 import { atomicWriteFile } from "../../internal/atomic-write.js";
 
+/** Secret stores must never enter a model through file-backed delegation. */
+export function secretStoreName(...paths: string[]): string | null {
+  for (const target of paths) {
+    const name = path.basename(target).toLowerCase();
+    if (name === ".vault.toml" || name === ".project_config.toml") return name;
+  }
+  return null;
+}
+
 export interface FsStat {
   isFile: boolean;
   isDirectory: boolean;

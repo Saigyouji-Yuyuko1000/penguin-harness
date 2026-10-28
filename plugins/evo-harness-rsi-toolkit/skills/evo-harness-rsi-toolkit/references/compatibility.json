@@ -1,0 +1,183 @@
+{
+  "method_version": "2026.10.28.6",
+  "learning_baseline": {
+    "baseline": "1b56cb777e515564fd6b2059818ae165242bb560",
+    "baseline_is_actual_source": true,
+    "unchanged_learning_files": {
+      "references/roles.md": "6b9025014681dfe02b6e3028c7a5f6eccedc86381d4a2a50e9f67fd003617d9b",
+      "references/algorithm.md": "d34f0b2d65725a53e424407c9a224441681f932e228ea73d90344ca818ca34fa"
+    },
+    "retained_engineering": [
+      {
+        "commit": "364fe1b92",
+        "change": "carry frozen general_storage through prepare/export/seal/rebuild; preserves .6 description-only loading intent"
+      },
+      {
+        "commit": "e1d063f29",
+        "change": "exactly reviewed compatible Base references and native worker binding; no learning edits"
+      }
+    ]
+  },
+  "upstream": {
+    "harness": "9f6c4538fa7ba97c30e2256985558037fb32f280",
+    "benchmark": "b5f077194c696d9602630d4d43417d91983524c9"
+  },
+  "compatibility_changes": [
+    {
+      "change": "task_group_<group>/tgNNN-train -> tasks/train_tasks; test_tasks/tgNNN-test -> tasks/<domain>-test-NNN",
+      "evidence": "benchmarks/*/tasks/task_group.yaml training_run.path/test_tasks[].path",
+      "affected": [
+        "benchmark/protocol.py:task_root,validate_config,prepare_trainer",
+        "benchmark/registration.py:case_roster",
+        "plugin/control.py:role_request,prepare_capture"
+      ]
+    },
+    {
+      "change": "CASE-001-train_tasks and CASE-NNN-<domain>-test-NNN, distinct from benchmark ID and train_001 internal member ID",
+      "evidence": "packages/*/CASE-*/statement/README.md + task_group.yaml",
+      "affected": [
+        "registration.case_roster",
+        "worker_job",
+        "injection",
+        "new explicit adapter mapping"
+      ]
+    },
+    {
+      "change": "Package statements use main branch; import origin includes version/commit and existing Projects are not refreshed automatically",
+      "evidence": "packages/README.md and scripts/build-benchmarks.mjs; native import handling",
+      "affected": [
+        "discovery/bootstrap",
+        "evaluation.md Harbor link qualification",
+        "Project package verification"
+      ]
+    },
+    {
+      "change": "AMSP tool_call_output.status replaces stop_reason; completed/fatal/aborted have explicit semantics",
+      "evidence": "packages/amsp/src/records/types.ts:61,276",
+      "affected": [
+        "evo native_read_count/evidence checks",
+        "inspection/replay",
+        "benchmark/injection trace parsing"
+      ]
+    },
+    {
+      "change": "Core imports moved from omnimessage to @prismshadow/amsp/records; upstream lacks fork prompt_file/scoped Solver-hook extensions",
+      "evidence": "packages/core/src/environment/tools/run-subagent.ts; agent.ts:576",
+      "affected": [
+        "port only required native prompt/scoped-hook/wait extensions",
+        "role seal native Session binding"
+      ]
+    },
+    {
+      "change": "No fixed subset config needed: discover published train/test package pair, use manifest task IDs/paths/timeouts; keep one continuous training case",
+      "evidence": "all six current manifests and actual task.toml/package case directories",
+      "affected": ["new benchmark adapter/bootstrap; old GDPevo fixed profile remains historical"]
+    },
+    {
+      "change": "Native State transport excludes vault/memory/schedule, archive payload rooted at State contents; preserve snapshots rooted at agent_state",
+      "evidence": "native shared evaluation.md; agents/penguin_agent; prior verified pack_state",
+      "affected": ["State pack/export/acceptance tests; no semantic change"]
+    },
+    {
+      "change": "Algorithm constants remain one attempt/negative original Solver reflection/one compilation/general-topic operations/16000-byte declared budget",
+      "evidence": "frozen .6 roles and algorithm",
+      "affected": ["preserve algorithm; extract only benchmark-specific bindings"]
+    },
+    {
+      "change": "retired --source removed; native prompt_file/scoped child hook/lifecycle wait ports adapted to AMSP records",
+      "evidence": "current CLI schema and native tests",
+      "affected": [
+        "agents/penguin_agent/helper.mjs",
+        "packages/core/src/environment/tools/run-subagent.ts",
+        "packages/core/src/hooks/stop-hook.ts"
+      ]
+    },
+    {
+      "change": "Project identity covers full CASE trees and semantic non-origin configuration; native default/format/import normalization preserved",
+      "affected": [
+        "scripts/benchmarks.py:package_files,configuration_digest,project_package,frozen_plan"
+      ]
+    },
+    {
+      "change": "Explicit unsupported Harbor capability blockers; no replacement Reflector or algorithm change",
+      "affected": ["scripts/benchmarks.py:bootstrap", "README.md"]
+    },
+    {
+      "change": "v2 native diagnostic receipt path accepts the new protocol and method version, retaining actual State/runtime checks",
+      "affected": ["benchmark/experiments/evo-harness/v2/injection.py:_trial,canonical_worker_cell"]
+    },
+    {
+      "change": "Exact .6 Reader constants and historical absolute read plans; native State sibling method paths validated; original hashes/context/budget retained",
+      "affected": [
+        "scripts/historical_readers.py",
+        "scripts/evo.py:reader_variant,validate_package_files,native_read_plan,solver_skill_observation"
+      ]
+    },
+    {
+      "change": "Read-only compiled-byte reconstruction uses the reference format directly, including exact 16000-byte boundary; no rewrite of old artifacts",
+      "affected": ["scripts/evo.py:verify_compilation,render_reference_package,render_package"]
+    },
+    {
+      "change": "Complete English/Chinese plugin catalogs, guide and changelog entries",
+      "affected": [
+        "README.md",
+        "README.zh.md",
+        "plugins/README.md",
+        "packages/docs/content/skills.en.md",
+        "packages/docs/content/skills.zh.md"
+      ]
+    },
+    {
+      "change": "Project name/path entry acquires official resources automatically; cache is pinned per experiment and unchanged on resume",
+      "affected": ["scripts/resources.py", "scripts/benchmarks.py", "references/adapters.md"]
+    },
+    {
+      "change": "Evo protocol and trial acceptance ship with method; public task repository requires no Evo branch",
+      "affected": ["scripts/runtime/", "scripts/control.py"]
+    },
+    {
+      "change": "bundle publisher includes the native README.md metadata file; retained hashes, private-path restrictions and strict inventory",
+      "affected": ["scripts/runtime/source_bundle.py:published_plugin_files"],
+      "algorithm_change": false
+    },
+    {
+      "change": "024 and GDPevo 024 resolve by official task_group_id to the same frozen DataAnalysis contract",
+      "affected": ["scripts/resources.py", "scripts/benchmarks.py:gdpevo_group_alias"],
+      "algorithm_change": false
+    },
+    {
+      "change": "PR1374 SkillAdam updated independently; Evo retains existing round-first statistics and adds native Train/Test resource detail with unknown values and trial deduplication",
+      "affected": ["scripts/runtime/statistics_report.py", "references/reporting.md"],
+      "algorithm_change": false
+    }
+  ],
+  "coverage": {
+    "gdpevo": "six actual public manifests and synthetic preparation/registration/transport; no paid end-to-end",
+    "workspace": "native same-Session synthetic channel plus offline capture/compile/export; parent Workspace inherited",
+    "other_harbor": "Sec A–E real public resource and launch configuration; full live RSI remains unsupported without original-session feedback"
+  },
+  "entry_scope": "one resolved source Benchmark per controller Session; missing domain/runtime/authorization collected once",
+  "python": "3.11+, install scripts/requirements.txt separately from npm",
+  "not_changed": [
+    "negative feedback candidate source",
+    "original Solver reflection",
+    "one batch compiler and operations",
+    "topic full body/general descriptions",
+    "16000-byte aggregate limit",
+    "grading and source tasks"
+  ],
+  "previous_engineering_commit": "9612bd2b0734ee820a8cbaa5ded6c08a0ba65e18",
+  "integration": {
+    "official_harness": "9f6c4538fa7ba97c30e2256985558037fb32f280",
+    "pr1374": "bafa96f6fbf6c18503e10656a2db36e39559d2f8",
+    "fork_main_before_sync": "60617a383c487e51f3cd7e50b8c04bc5f3145601",
+    "local_combined_base": "393618a9451955ea071ff8a92f9f5af1aea26566",
+    "separate_learning_algorithms": true
+  },
+  "experiment_defaults": {
+    "training_passes": 1,
+    "test_repeats": 3,
+    "statistics": "within-round domain means, then sample variance/stddev across complete rounds",
+    "learning_algorithm_changed": false
+  }
+}
